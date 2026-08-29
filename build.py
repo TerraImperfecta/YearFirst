@@ -28,7 +28,7 @@ TARGETS = {
         "background": {"scripts": ["background.js"]},
         "browser_specific_settings": {
             "gecko": {
-                "id": "year-first@example.com",
+                "id": "year-first@immanuelqrw.dev",
                 "strict_min_version": "115.0",
             }
         },
