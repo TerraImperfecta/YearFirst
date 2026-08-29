@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Date logic
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --test test/
+
+  dist-in-sync:
+    # dist/ is committed, and the README promises it is loadable without
+    # running the build. That only stays true if it matches src/, so rebuild
+    # and fail on any difference.
+    name: dist/ matches a fresh build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 build.py
+      - name: Check for drift
+        run: |
+          if [ -n "$(git status --porcelain -- dist/)" ]; then
+            echo "::error::dist/ is out of date. Run 'python3 build.py' and commit the result."
+            git status --short -- dist/
+            git diff -- dist/
+            exit 1
+          fi
+          echo "dist/ is in sync with src/"
