@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Year First — test page</title>
+<style>
+  body {
+    margin: 0 auto; padding: 32px 24px 80px; max-width: 780px;
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: #16191d; background: #fff;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p.lede { color: #5c6570; margin: 0 0 28px; }
+  h2 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .07em;
+    color: #5c6570; margin: 32px 0 8px; border-bottom: 1px solid #dfe3e8; padding-bottom: 6px;
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  td { padding: 6px 10px 6px 0; vertical-align: top; border-bottom: 1px solid #f0f2f4; }
+  td.expect { color: #5c6570; text-align: right; white-space: nowrap;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+  button { font: inherit; padding: 7px 14px; border: 1px solid #0b6b5f; background: #0b6b5f;
+    color: #fff; border-radius: 5px; cursor: pointer; }
+  input, code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+  input { padding: 6px 8px; border: 1px solid #dfe3e8; border-radius: 5px; width: 220px; }
+  code { background: #f4f6f8; padding: 2px 5px; border-radius: 3px; }
+  #added li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<h1>Year First — test page</h1>
+<p class="lede">Right column is what each line should say once the extension has run.
+This page is <code>lang="en-GB"</code>, so ambiguous numeric dates should be read day-first.</p>
+
+<h2>Month written out</h2>
+<table>
+  <tr><td>Published on January 5, 2024 by the committee.</td><td class="expect">2024-01-05</td></tr>
+  <tr><td>Filed Jan. 5, 2024 in the district court.</td><td class="expect">2024-01-05</td></tr>
+  <tr><td>Due March 3rd, 2021 at the latest.</td><td class="expect">2021-03-03</td></tr>
+  <tr><td>Signed 5 January 2024 in Geneva.</td><td class="expect">2024-01-05</td></tr>
+  <tr><td>The 22nd of September, 1998 was a Tuesday.</td><td class="expect">1998-09-22</td></tr>
+  <tr><td>Reissued 7 Sept 2019 without changes.</td><td class="expect">2019-09-07</td></tr>
+</table>
+
+<h2>Numeric</h2>
+<table>
+  <tr><td>Invoice dated 23/07/2024, payable in 30 days.</td><td class="expect">2024-07-23</td></tr>
+  <tr><td>Meeting moved to 05/01/2024.</td><td class="expect">2024-01-05</td></tr>
+  <tr><td>Contract start 1-6-2024, end 31-12-2024.</td><td class="expect">2024-06-01 / 2024-12-31</td></tr>
+  <tr><td>Stamped 05.01.2024 at the border.</td><td class="expect">2024-01-05</td></tr>
+  <tr><td>Receipt: 3/4/25, no refunds.</td><td class="expect">2025-04-03</td></tr>
+  <tr><td>Already tidy: 2024-1-5 needs padding.</td><td class="expect">2024-01-05</td></tr>
+  <tr><td>Log line 2024/03/09 14:02 UTC.</td><td class="expect">2024-03-09</td></tr>
+</table>
+
+<h2>&lt;time&gt; elements</h2>
+<table>
+  <tr><td>Posted <time datetime="2023-11-14">three years ago</time>.</td><td class="expect">2023-11-14</td></tr>
+  <tr><td>Updated <time datetime="2024-02-29T09:15:00Z">yesterday</time>.</td><td class="expect">2024-02-29</td></tr>
+</table>
+
+<h2>Month and year (only with that option on)</h2>
+<table>
+  <tr><td>Shipping in March 2024.</td><td class="expect">2024-03</td></tr>
+  <tr><td>Whatever may 2024 brings.</td><td class="expect">why it's off by default</td></tr>
+</table>
+
+<h2>Should not change</h2>
+<table>
+  <tr><td>Version <code>1.2.2024</code> in a code element.</td><td class="expect">unchanged</td></tr>
+  <tr><td>Semantic version 2.5.1 and a ratio of 3/4.</td><td class="expect">unchanged</td></tr>
+  <tr><td>Not a real date: 31/02/2024.</td><td class="expect">unchanged</td></tr>
+  <tr><td>Phone extension 555 12 2024, order #05012024.</td><td class="expect">unchanged</td></tr>
+  <tr><td>Editable text you're typing: <span contenteditable="true">meet me 05/01/2024</span></td><td class="expect">unchanged</td></tr>
+  <tr><td>Form field: <input type="text" value="05/01/2024"></td><td class="expect">unchanged</td></tr>
+</table>
+
+<h2>Added after page load</h2>
+<p>Checks that the MutationObserver picks up content the page adds later.</p>
+<p><button id="add">Add three more dates</button></p>
+<ul id="added"></ul>
+
+<script>
+  const samples = [
+    "Injected at runtime: 12 August 2026 — expect 2026-08-12",
+    "Injected at runtime: December 25, 1999 — expect 1999-12-25",
+    "Injected at runtime: 30/04/2022 — expect 2022-04-30"
+  ];
+  let i = 0;
+  document.getElementById("add").addEventListener("click", () => {
+    const li = document.createElement("li");
+    li.textContent = samples[i % samples.length];
+    document.getElementById("added").appendChild(li);
+    i++;
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Year First — settings</title>
+<style>
+  :root {
+    --ink: #16191d;
+    --muted: #5c6570;
+    --line: #dfe3e8;
+    --bg: #ffffff;
+    --field: #f4f6f8;
+    --accent: #9a5e0a;
+    --accent-soft: #fbf0dc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e7eaee;
+      --muted: #99a3ae;
+      --line: #333940;
+      --bg: #1c1f24;
+      --field: #24282e;
+      --accent: #e9a93c;
+      --accent-soft: #3a2a0e;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 20px 22px 26px;
+    min-width: 380px;
+    max-width: 560px;
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .mono { font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace; }
+
+  h1 {
+    margin: 0 0 2px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .sub { margin: 0 0 18px; color: var(--muted); font-size: 12.5px; }
+
+  /* Live preview: the same instant, read four ways */
+  .preview {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .preview-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 12px;
+    font-size: 12.5px;
+    border-top: 1px solid var(--line);
+  }
+  .preview-row:first-child { border-top: 0; }
+  .preview-row .from { color: var(--muted); }
+  .preview-row .arrow { color: var(--muted); font-size: 11px; }
+  .preview-row .to { color: var(--accent); font-weight: 600; text-align: right; }
+  .preview-row.ambiguous { background: var(--accent-soft); }
+
+  fieldset { border: 0; margin: 0 0 18px; padding: 0; }
+  legend {
+    padding: 0 0 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  label.row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 8px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  label.row:hover { background: var(--field); }
+  label.row input { margin: 2px 0 0; accent-color: var(--accent); flex: none; }
+  label.row .text { display: block; }
+  label.row .hint { display: block; color: var(--muted); font-size: 12px; margin-top: 1px; }
+
+  .saved {
+    height: 16px;
+    font-size: 12px;
+    color: var(--accent);
+    opacity: 0;
+    transition: opacity .15s;
+  }
+  .saved.show { opacity: 1; }
+
+  input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .saved { transition: none; } }
+</style>
+</head>
+<body>
+
+<h1>Year First</h1>
+<p class="sub">Dates on the pages you visit are rewritten as YYYY-MM-DD.</p>
+
+<div class="preview mono" id="preview"></div>
+
+<fieldset>
+  <legend>Reading 05/01/2024</legend>
+  <label class="row">
+    <input type="radio" name="numericOrder" value="auto">
+    <span class="text">Work it out per page
+      <span class="hint">Uses dates on the page that can only be read one way, then the page language.</span>
+    </span>
+  </label>
+  <label class="row">
+    <input type="radio" name="numericOrder" value="dmy">
+    <span class="text">Day first — 5 January
+      <span class="hint">Most of the world.</span>
+    </span>
+  </label>
+  <label class="row">
+    <input type="radio" name="numericOrder" value="mdy">
+    <span class="text">Month first — May 1
+      <span class="hint">United States.</span>
+    </span>
+  </label>
+</fieldset>
+
+<fieldset>
+  <legend>What gets rewritten</legend>
+  <label class="row">
+    <input type="checkbox" id="convertTimeElements">
+    <span class="text">Timestamps marked up as &lt;time&gt;
+      <span class="hint">Turns "3 hours ago" into the date it refers to.</span>
+    </span>
+  </label>
+  <label class="row">
+    <input type="checkbox" id="convertMonthYear">
+    <span class="text">Month and year alone
+      <span class="hint">"March 2024" becomes 2024-03. Off by default because "may 2024" is often a sentence.</span>
+    </span>
+  </label>
+</fieldset>
+
+<fieldset>
+  <legend>Appearance</legend>
+  <label class="row">
+    <input type="checkbox" id="showOriginal">
+    <span class="text">Keep the original text as a tooltip
+      <span class="hint">On by default. Wraps each date in an element, which a few app-style sites don't like — turn it off if a page misbehaves.</span>
+    </span>
+  </label>
+  <label class="row">
+    <input type="checkbox" id="highlight">
+    <span class="text">Underline rewritten dates
+      <span class="hint">Handy for checking what the extension touched.</span>
+    </span>
+  </label>
+  <label class="row">
+    <input type="checkbox" id="enabled">
+    <span class="text">Rewrite dates
+      <span class="hint">Turn off to leave pages alone without uninstalling.</span>
+    </span>
+  </label>
+</fieldset>
+
+<div class="saved" id="saved">Saved — reload a page to see the change.</div>
+
+<script src="options.js"></script>
+</body>
+</html>
