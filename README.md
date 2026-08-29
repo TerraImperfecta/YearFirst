@@ -154,3 +154,10 @@ never gets mistaken for a spellcheck squiggle.
 | Firefox | free | AMO signing required, self-distribution allowed |
 | Chrome | $5 once | Web Store review |
 | Safari | $99/year | ships inside a native app via the App Store |
+
+## License
+
+GPL-3.0-or-later. See `LICENSE`.
+
+Note for the Safari target: GPLv3 and the Apple App Store are in conflict —
+see the licensing bullet in `PLAN.md` before submitting there.

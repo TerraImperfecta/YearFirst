@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Build Year First for Firefox, Chrome and Safari.
 
 Everything in src/ is shared verbatim. The only thing that differs between
@@ -20,6 +21,7 @@ ROOT = Path(__file__).resolve().parent
 SRC = ROOT / "src"
 DIST = ROOT / "dist"
 BASE = ROOT / "manifest.base.json"
+LICENSE = ROOT / "LICENSE"
 
 TARGETS = {
     # Firefox runs the background script as an event page and needs an
@@ -54,6 +56,10 @@ def build(target: str, make_zip: bool) -> Path:
         shutil.rmtree(out)
     shutil.copytree(SRC, out, ignore=shutil.ignore_patterns("make_icons.py", "*.pyc", "__pycache__"))
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    # GPL-3.0 requires the licence text to accompany the distributed work, and
+    # what gets distributed is this folder (and the zip made from it), not the
+    # repository.
+    shutil.copy2(LICENSE, out / "LICENSE")
 
     files = sum(1 for p in out.rglob("*") if p.is_file())
     print(f"{target:8} -> {out.relative_to(ROOT)}  ({files} files)")

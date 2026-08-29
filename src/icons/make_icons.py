@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Draws the Year First icon.
 
 Cascade: three squares nested off-centre, each settling toward the bottom
