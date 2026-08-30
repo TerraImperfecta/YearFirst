@@ -99,7 +99,51 @@
   }
   .saved.show { opacity: 1; }
 
-  input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* Sites turned off. Rows are buttons, not checkboxes, for two reasons:
+     "turn back on" says what happens, where a ticked box next to a host name
+     does not say which way is off; and every input on this page is wired to
+     save(), which a per-host control must not be. */
+  .sites { display: flex; flex-direction: column; }
+  .site {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 5px;
+  }
+  .site:hover { background: var(--field); }
+  .site .host {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 13px;
+  }
+  .sites .empty {
+    padding: 8px 10px;
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+  .sites:focus { outline: none; }
+
+  button.linkish {
+    flex: none;
+    border: 0;
+    padding: 3px 6px;
+    border-radius: 4px;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  button.linkish:hover { text-decoration: underline; }
+  .clear-all {
+    margin-top: 6px;
+    padding-left: 10px;
+  }
+
+  input:focus-visible,
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) { .saved { transition: none; } }
 </style>
 </head>
@@ -168,6 +212,16 @@
       <span class="hint">Turn off to leave pages alone without uninstalling.</span>
     </span>
   </label>
+</fieldset>
+
+<fieldset>
+  <legend>Sites turned off</legend>
+  <!-- aria-live so removing a row is announced; tabindex so focus has
+       somewhere to land when the last row goes away. -->
+  <div class="sites" id="siteList" aria-live="polite" tabindex="-1"></div>
+  <div class="clear-all" id="clearAllRow" hidden>
+    <button type="button" class="linkish" id="clearAll">Turn all sites back on</button>
+  </div>
 </fieldset>
 
 <div class="saved" id="saved">Saved — reload a page to see the change.</div>

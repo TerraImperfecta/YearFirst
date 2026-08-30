@@ -243,9 +243,37 @@ would go too far the other way and merge `localhost:3000` with
 And `disabledHosts` is a separate key from `enabled`, so turning a site back
 on cannot silently flip the master switch.
 
-Not built: a way to review or clear the list from the options page. Today the
-only way to re-enable a site is to open the popup on it. That is discoverable
-enough for now, but it is the obvious follow-up.
+Built since: a "Sites turned off" list on the options page, with a "Turn back
+on" per row and a "Turn all sites back on" once there are two or more. Before
+it, re-enabling a site meant navigating to that site first and opening the
+popup there -- fine for a site you are looking at, useless for one you turned
+off months ago and now cannot name.
+
+Four things it does deliberately:
+
+The rows are BUTTONS, not checkboxes. `options.js` wires every `input` on the
+page to `save()`, so a per-host checkbox would fire a full settings write; and
+"turn back on" says which way is off, where a tick next to a host name does
+not. A test asserts the list contains no inputs, so this cannot be undone by
+accident.
+
+Host names go in as `textContent`. The preview block above them uses
+`innerHTML`, which is safe there because every part of it is a literal in the
+source -- none of the host list is. Tested with a host containing a tag.
+
+It writes `disabledHosts` alone, never as part of `save()`, so the two halves
+of the page cannot overwrite each other. Also tested in both directions.
+
+It listens on `storage.onChanged`, because the popup writes the same key and
+can be used while this page is open. Without it the list goes stale and
+re-enabling a site would write back a list that had already moved on.
+
+Focus is placed after a removal -- the button that had it is gone. It lands on
+the row that took its place, on the row above when the bottom one goes, and on
+the list itself when the last one goes. The empty case is a separate branch,
+which is where the one real bug in this work was: it returned before the focus
+code ran, so removing the only row dropped focus to nowhere. Caught by a test
+written before the code was.
 
 The original design notes follow.
 
