@@ -313,6 +313,28 @@ for a release build, so the project stands alone.
 Generated outside the repo on purpose. An Xcode project is a large pile of
 files that should not be committed, and there is no .gitignore to catch it.
 
+**Bump the build number before every archive.**
+
+```
+python3 tools/fix-safari-project.py --bump-build
+```
+
+`CURRENT_PROJECT_VERSION` is the build number and the converter leaves it at
+1 forever. Two consequences, both nasty.
+
+App Store Connect refuses a second upload with the same version AND build
+number, so a rejected 1.0.1 cannot be fixed and re-uploaded until this moves.
+
+And archives are named by timestamp, not by content, so with a constant build
+number two archives read identically in Organizer -- "1.0.1 (1)" -- while
+containing different code. That happened: an archive predating a fix sat next
+to one containing it, both labelled 1.0.1, and uploading the wrong one would
+have shipped a known bug. Delete archives once uploaded, and bump the number
+so the remaining ones are never ambiguous.
+
+`--bump-build` is deliberately not part of the default run: the other fixes
+restore a known state and are idempotent, this one changes state every time.
+
 **Safari shows one extension per registered copy of the app.** Every
 `xcodebuild` run ends with RegisterWithLaunchServices, and Debug, Release and
 the archive's intermediate copy are three different paths -- so the Extensions
