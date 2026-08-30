@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Year First",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Rewrites every date on a page to YYYY-MM-DD.",
   "permissions": [
     "storage",

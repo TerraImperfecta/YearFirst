@@ -508,14 +508,14 @@ app -- which is the lesson: "it builds" and "it launches" are not "it works".
 **The Xcode project carries its own version and does not follow the
 manifest.** The project references `dist/safari/`, so the extension content
 updates when you rebuild -- but `MARKETING_VERSION` in `project.pbxproj` is
-set once at generation and stays there. After bumping the version in
-`manifest.base.json`, update it in four places:
+set once at generation and stays there, in four places. Otherwise the app
+wrapper and the extension inside it report different versions, and the App
+Store record follows the wrapper.
 
-    MARKETING_VERSION = 1.0.1;
-
-Otherwise the app wrapper and the extension inside it report different
-versions, and the App Store record follows the wrapper. Check the built app
-rather than trusting the edit:
+`tools/fix-safari-project.py` now does this: it reads the version out of
+`manifest.base.json` and writes every occurrence, so bumping the manifest and
+re-running the script is the whole procedure. Check the built app rather than
+trusting the edit:
 
     defaults read "<built>.app/Contents/Info.plist" CFBundleShortVersionString
 
