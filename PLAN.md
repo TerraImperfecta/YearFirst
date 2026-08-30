@@ -17,12 +17,18 @@ path for content added after load, the toolbar popup, the options page, the
 icon set, and the three-target build. Firefox is the only browser it has
 actually been loaded in.
 
-The Chrome build is now verified: loaded unpacked, service worker starts
-clean, dates rewrite, the MutationObserver path works, the "off" badge
-appears and settings persist. No changes were needed to make it work.
+All three builds are now verified by hand.
 
-Not verified at all: Safari, which has never been through
-`safari-web-extension-converter`.
+Firefox was the development target throughout. Chrome was loaded unpacked and
+needed no changes. Safari was converted, built in Xcode and run: dates
+rewrite, the MutationObserver path works, the popup, options page, badge and
+settings persistence all behave. The only fixes Safari needed were to the
+manifest patch and the generated project, never to `src/`.
+
+No automated coverage of the DOM side on any browser -- the TreeWalker,
+MutationObserver and rewriting paths are still only verified by hand against
+`test/test.html`. `findDates` and the licensing of the builds are the parts
+under test.
 
 Automated tests now cover the matching logic: 45 cases in
 `test/dates.test.js`, run with `node --test`, no dependencies. That closes
@@ -199,7 +205,7 @@ behaves. The popup already has `activeTab`, so the origin is available from
 `tabs.query` without new permissions. Keep the storage key separate from the
 global `enabled` flag so the two don't fight.
 
-### 4. Safari — CONVERTED, NOT YET RUN
+### 4. Safari — DONE (built and run; not yet distributed)
 
 Licensing is settled: this target ships MPL-2.0, handled by `build.py`. No
 action needed beyond not undoing it.
@@ -259,18 +265,18 @@ Safari does not support `options_ui.open_in_tab`, so `build.py` drops that key
 for the safari target only. It was `false`, which is Safari's only behaviour
 anyway, so nothing changed but the warning.
 
-Still to do, and it needs a human at the keyboard:
+Verified working: built in Xcode, enabled through
+Develop → Allow Unsigned Extensions, and run against `test/test.html` served
+over http. Dates rewrite, the MutationObserver path works, and the popup,
+options page, badge and settings persistence all behave.
 
-- Open the project in Xcode and build and run it (⌘R).
-- Safari → Settings → Advanced → show developer features, then
-  Develop → Allow Unsigned Extensions. That resets on every Safari restart.
-- Enable the extension in Safari → Settings → Extensions, and run the same
-  checks the Chrome build passed, against `test/test.html` served over http.
-- Two things to confirm rather than assume: whether `action.setBadgeText`
-  does anything (it is already wrapped in try/catch, so worst case is a
-  missing badge and the popup still shows true state), and whether the
-  options page behaves, since Safari surfaces it through the app rather than
-  as an embedded page.
+Both things this plan flagged as uncertain turned out fine. `setBadgeText`
+does work on Safari -- the try/catch around it stays anyway, since it costs
+nothing and the popup showing true state is the real guarantee. The options
+page behaves despite Safari surfacing it through the app rather than inline.
+
+To run it again after a Safari restart, redo Develop → Allow Unsigned
+Extensions; that setting does not persist.
 
 Distribution is a separate job: Apple Developer Program at $99/year, code
 signing, and an App Store Connect record. Note that is an APP listing, not an
