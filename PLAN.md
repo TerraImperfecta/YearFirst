@@ -282,6 +282,20 @@ for a release build, so the project stands alone.
 Generated outside the repo on purpose. An Xcode project is a large pile of
 files that should not be committed, and there is no .gitignore to catch it.
 
+**The Xcode project carries its own version and does not follow the
+manifest.** The project references `dist/safari/`, so the extension content
+updates when you rebuild -- but `MARKETING_VERSION` in `project.pbxproj` is
+set once at generation and stays there. After bumping the version in
+`manifest.base.json`, update it in four places:
+
+    MARKETING_VERSION = 1.0.1;
+
+Otherwise the app wrapper and the extension inside it report different
+versions, and the App Store record follows the wrapper. Check the built app
+rather than trusting the edit:
+
+    defaults read "<built>.app/Contents/Info.plist" CFBundleShortVersionString
+
 **The generated project does not build as-is.** Xcode fails with:
 
     Embedded binary's bundle identifier is not prefixed with the parent
