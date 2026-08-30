@@ -282,6 +282,20 @@ for a release build, so the project stands alone.
 Generated outside the repo on purpose. An Xcode project is a large pile of
 files that should not be committed, and there is no .gitignore to catch it.
 
+**Run `tools/fix-safari-project.py` after generating or regenerating the
+project.** The three fixes below live only in the generated project, which is
+not in version control, so regenerating loses all of them. The script applies
+all three and is idempotent:
+
+```
+python3 tools/fix-safari-project.py --check   # report, change nothing
+python3 tools/fix-safari-project.py           # apply
+```
+
+It reads the version from `manifest.base.json`, so bumping the version and
+re-running is all a release needs. It refuses to guess: an unexpected project
+shape is an error, not a best effort.
+
 **The network entitlement is removed on purpose.** The converter sets
 `ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES` on the app target, which grants
 `com.apple.security.network.client`. This extension makes no network requests
@@ -418,6 +432,8 @@ python3 build.py              # all three targets into dist/
 python3 build.py chrome       # one target
 python3 build.py --zip        # store-ready zips
 cd test && python3 -m http.server 8000   # then open localhost:8000/test.html
+
+python3 tools/fix-safari-project.py --check   # after any Safari regeneration
 ```
 
 The test page checks itself: let it settle, then press **Check results**. It
