@@ -478,6 +478,16 @@ python3 tools/fix-safari-project.py --check   # report, change nothing
 python3 tools/fix-safari-project.py           # apply
 ```
 
+The Python tools have their own tests, since `node --test` does not reach
+them:
+
+```
+python3 test/tools.test.py
+```
+
+Small, but this one decides which registrations to delete, and a wrong
+answer there removes the copy Safari is actually using.
+
 `--check` exits non-zero when anything needs fixing, so it is the one to run
 if this ever goes in CI. The five fixes below are all idempotent; `--bump-build`
 is deliberately excluded from both the default run and `--check`, because it
