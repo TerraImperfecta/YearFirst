@@ -17,10 +17,12 @@ path for content added after load, the toolbar popup, the options page, the
 icon set, and the three-target build. Firefox is the only browser it has
 actually been loaded in.
 
-Not verified at all: the Chrome build (the manifest patch is a one-line
-change from `background.scripts` to `background.service_worker` and looks
-right, but nobody has loaded it) and Safari (never been through
-`safari-web-extension-converter`).
+The Chrome build is now verified: loaded unpacked, service worker starts
+clean, dates rewrite, the MutationObserver path works, the "off" badge
+appears and settings persist. No changes were needed to make it work.
+
+Not verified at all: Safari, which has never been through
+`safari-web-extension-converter`.
 
 Automated tests now cover the matching logic: 45 cases in
 `test/dates.test.js`, run with `node --test`, no dependencies. That closes
@@ -176,12 +178,15 @@ Also cover: `convertMonthYear` on turns `Shipping in March 2024.` into
 `2024-03` and off leaves it alone; a guard asserting no lookbehind
 (`/\(\?<[=!]/`) appears anywhere in `src/`.
 
-### 2. Load the Chrome build
+### 2. Load the Chrome build — DONE
 
-`chrome://extensions` → Developer mode → Load unpacked → `dist/chrome`.
-Confirm the service worker starts, the popup opens, the badge appears when
-rewriting is switched off, and settings persist. Fix whatever breaks in
-`build.py`'s chrome patch, not in `src/`.
+Loaded unpacked from `dist/chrome`. Service worker starts with a clean
+console, dates rewrite, the "Add three more dates" button confirms the
+MutationObserver path, the "off" badge appears, and settings survive an
+extension reload. Nothing needed fixing — the one-line manifest patch from
+`background.scripts` to `background.service_worker` was sufficient.
+
+If this ever regresses, fix it in `build.py`'s chrome patch, not in `src/`.
 
 ### 3. Per-site disable
 
