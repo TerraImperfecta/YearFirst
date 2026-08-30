@@ -282,6 +282,23 @@ for a release build, so the project stands alone.
 Generated outside the repo on purpose. An Xcode project is a large pile of
 files that should not be committed, and there is no .gitignore to catch it.
 
+**Safari shows one extension per registered copy of the app.** Every
+`xcodebuild` run ends with RegisterWithLaunchServices, and Debug, Release and
+the archive's intermediate copy are three different paths -- so the Extensions
+pane fills with identical "Year First" entries. The copy you tick is not
+necessarily the copy you are running, and the app then reports its extension
+as off while the extension is plainly working. Registrations outlive the
+bundles they point at, so clearing DerivedData does not help; it just leaves
+an entry with a blank icon.
+
+```
+python3 tools/clean-safari-registrations.py --check   # list
+python3 tools/clean-safari-registrations.py           # unregister all
+```
+
+Then rebuild, which registers exactly one, and quit Safari fully -- it caches
+the list. Worth running after archiving, which is what adds the third.
+
 **Run `tools/fix-safari-project.py` after generating or regenerating the
 project.** The three fixes below live only in the generated project, which is
 not in version control, so regenerating loses all of them. The script applies
