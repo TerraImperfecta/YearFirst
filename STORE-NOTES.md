@@ -135,6 +135,104 @@ inconsistency with the other targets.
 
 ---
 
+# App Store Connect (Safari)
+
+A separate listing from the other two, for an **app**, not an extension. Most
+of the extension copy does not transfer: a Mac App Store visitor is buying an
+app and needs telling that the thing they install is a Safari extension and
+how to switch it on.
+
+## Creating the record
+
+    Platform            macOS
+    Name                Year First            (10 of 30 characters)
+    Primary language    English (U.S.)
+    Bundle ID           dev.immanuelqrw.year-first
+    SKU                 year-first-macos      (never shown to users)
+    User access         Full Access
+
+## Version information
+
+    Version             1.0.1
+    Category            Utilities
+    Copyright           2026 Immanuel Washington
+    Minimum macOS       13.3   (set by the build, not typed here)
+
+    Support URL         https://github.com/TerraImperfecta/YearFirst
+    Marketing URL       (optional -- same, or leave blank)
+    Privacy Policy URL  https://github.com/TerraImperfecta/YearFirst/blob/main/PRIVACY.md
+
+Support URL is required and there is no way round it. The repository is
+public, so it serves.
+
+## Keywords
+
+100 characters, comma separated, no spaces after commas:
+
+    date,dates,ISO,8601,YYYY-MM-DD,format,reformat,timestamp,unambiguous,calendar
+
+## Description
+
+    Year First rewrites every date on the pages you visit to YYYY-MM-DD.
+
+    This app installs the Year First extension for Safari. Once installed,
+    open Safari, choose Settings, then Extensions, and turn on Year First.
+    Safari will ask which sites it may run on.
+
+    Dates are rewritten largest unit first, in the order that actually
+    sorts. It reads the formats people write: January 5, 2024 and 5 Jan
+    2024 both become 2024-01-05; 23/07/2024 becomes 2024-07-23; 3/4/25
+    becomes 2025-04-03.
+
+    05/01/2024 is the hard one, because it means two different days
+    depending on who wrote it. Year First looks for other dates on the same
+    page that can only be read one way -- anything with a part above 12 --
+    and lets those decide. Failing that it uses the page's own language. Or
+    you can simply tell it: day first, month first, or work it out.
+
+    Timestamps marked up as time elements are read from their machine-
+    readable attribute, so "three hours ago" becomes a real date.
+
+    Some sites are better left as they are -- code review tools, log
+    viewers. The toolbar popup has an off switch for the site you are on,
+    separate from the global one.
+
+    It is careful about what it does not touch. Code, preformatted text,
+    input fields and anything you are editing are left alone. Version
+    numbers like 1.2.3 survive, as do fractions, year ranges, and
+    impossible dates like 31/02/2024. A date already written as 2024-01-05
+    is left exactly as it is.
+
+    No accounts, no network requests, no analytics, no data collection of
+    any kind. Your settings are stored by your browser and never leave it.
+    The source is public and readable -- nothing minified, nothing bundled
+    -- so you can check every word of this yourself.
+
+## App Privacy
+
+Answer **Data Not Collected**. Nothing is collected, so no data types are
+declared and no purposes need selecting. Age rating 4+.
+
+## Screenshots
+
+Mac sizes: 1280x800, 1440x900, 2560x1600, 2880x1800. At least one, up to ten.
+The existing set is already 1280x800 and 2560x1600, so sizing is done -- but
+what is *in* them matters:
+
+    reusable   1-before, 1-after, 4-ambiguous, 5-unchanged
+               cropped to page content, no browser chrome, so they are not
+               visibly Chrome
+
+    retake     2-popup, 3-options
+               these show Chrome's window and toolbar. A Chrome screenshot
+               in a Safari listing is wrong and invites a rejection. Retake
+               both in Safari.
+
+    new        the app's own window
+               a Mac App Store visitor installs an APP. Lead with the thing
+               they actually launch, showing the enable-in-Safari
+               instructions, then follow with Safari doing the work.
+
 # Listing copy
 
 Draft. Written to be pasted, then edited — the voice should be yours.
