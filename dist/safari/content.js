@@ -17,7 +17,8 @@
     convertTimeElements: true,   // use <time datetime="..."> attributes
     convertMonthYear: false,     // "March 2024" -> "2024-03"
     showOriginal: true,          // wrap in a <span title="original text">
-    highlight: true              // dotted underline on rewritten dates
+    highlight: true,             // dotted underline on rewritten dates
+    disabledHosts: []            // hosts switched off individually
   };
 
   /* ------------------------------------------------------------------ *
@@ -314,13 +315,27 @@
     defer(flush);
   }
 
+  // Per-site off switch. Deliberately a separate key from `enabled`: that one
+  // is the global switch, this is a list of hosts to leave alone. Keeping them
+  // apart means turning a site back on cannot silently flip the master.
+  //
+  // Matched on host -- hostname plus port -- rather than origin or hostname.
+  // Origin would split http://example.com from https://example.com, which is
+  // not how anyone thinks about "this site" and is not what the popup row
+  // says. Bare hostname would go too far the other way and merge
+  // localhost:3000 with localhost:8000, which really are different sites.
+  function disabledHere(settings) {
+    return Array.isArray(settings.disabledHosts)
+      && settings.disabledHosts.includes(location.host);
+  }
+
   function start(settings) {
     opts = { ...settings };
     opts.dayFirst = settings.numericOrder === "auto"
       ? inferDayFirst()
       : settings.numericOrder === "dmy";
 
-    if (!opts.enabled) return;
+    if (!opts.enabled || disabledHere(opts)) return;
     process(document.body || document.documentElement);
 
     observer = new MutationObserver((records) => {

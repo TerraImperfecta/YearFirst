@@ -63,6 +63,10 @@
   body.off .sample b { color: var(--muted); font-weight: 400; }
   body.off .rows { opacity: .45; pointer-events: none; }
 
+  .site { padding: 6px 6px 0; }
+  .site b { font-weight: 600; }
+  body.off .site { opacity: .45; pointer-events: none; }
+
   .rows { padding: 6px 6px 8px; }
   label.row {
     display: flex; gap: 9px; align-items: center;
@@ -104,6 +108,13 @@
 </label>
 
 <div class="sample">23/07/2024 &rarr; <b>2024-07-23</b></div>
+
+<div class="site" id="siteRow" hidden>
+  <label class="row">
+    <input type="checkbox" id="siteOff">
+    <span>Off on <b id="siteHost">this site</b></span>
+  </label>
+</div>
 
 <div class="rows">
   <label class="row">

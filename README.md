@@ -84,7 +84,12 @@ that injects dates after load to exercise the MutationObserver.
 
 ## Toolbar button
 
-Click it for the on/off switch and the two appearance toggles. Switching
+Click it for the on/off switch, a per-site off switch, and the two appearance
+toggles. **Off on <host>** leaves that one site alone and reloads it, which is
+useful where the original date string matters — code review tools, log
+viewers. It is remembered per host, so one entry covers the site over both
+`http` and `https`, while `localhost:3000` and `localhost:8000` stay separate.
+Independent of the global switch. Re-enable from the popup on the same site. Switching
 rewriting off reloads the current tab, because dates already rewritten stay
 rewritten until the page loads again. The appearance toggles offer a reload
 rather than forcing one. When rewriting is off the icon carries a grey "off"

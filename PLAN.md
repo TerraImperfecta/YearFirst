@@ -199,7 +199,29 @@ extension reload. Nothing needed fixing — the one-line manifest patch from
 
 If this ever regresses, fix it in `build.py`'s chrome patch, not in `src/`.
 
-### 3. Per-site disable
+### 3. Per-site disable — DONE
+
+Built as designed below. `disabledHosts` is a list of hosts in
+`storage.sync`, checked in `start()` before anything happens. The popup shows
+an "Off on <host>" row when the active tab is http(s), writes the host and
+reloads, matching how the master switch already behaves. `activeTab` supplies
+the URL, so no new permission was needed.
+
+Two details worth keeping. It matches on HOST -- hostname plus port -- rather
+than origin or bare hostname. Origin would split `http://example.com` from
+`https://example.com`, which is not how anyone thinks about "this site" and
+is not what the popup row says, since the row shows the host. Bare hostname
+would go too far the other way and merge `localhost:3000` with
+`localhost:8000`, which really are different sites. Tests assert both edges.
+
+And `disabledHosts` is a separate key from `enabled`, so turning a site back
+on cannot silently flip the master switch.
+
+Not built: a way to review or clear the list from the options page. Today the
+only way to re-enable a site is to open the popup on it. That is discoverable
+enough for now, but it is the obvious follow-up.
+
+The original design notes follow.
 
 The most likely thing to be missed in daily use — sites where the original
 date string matters, like code review tools. Design notes: store a list of

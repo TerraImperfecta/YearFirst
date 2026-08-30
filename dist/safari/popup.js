@@ -3,7 +3,7 @@
 
 const api = globalThis.browser ?? globalThis.chrome;
 
-const DEFAULTS = { enabled: true, highlight: true, showOriginal: true };
+const DEFAULTS = { enabled: true, highlight: true, showOriginal: true, disabledHosts: [] };
 
 function get() {
   const r = api.storage.sync.get(DEFAULTS);
@@ -29,25 +29,72 @@ async function reloadActiveTab() {
   }
 }
 
+// activeTab gives us the URL of the tab the popup was opened over, so no
+// extra permission is needed. Only http(s) pages can be switched off -- there
+// is nothing to rewrite on about: or the extension's own pages.
+//
+// Returns host: hostname plus port. That is exactly what the row displays and
+// exactly what content.js matches on.
+async function activeHost() {
+  try {
+    const [tab] = await api.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.url) return null;
+    const url = new URL(tab.url);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.host : null;
+  } catch {
+    return null;
+  }
+}
+
 const el = {
   enabled: document.getElementById("enabled"),
   highlight: document.getElementById("highlight"),
   showOriginal: document.getElementById("showOriginal"),
   state: document.getElementById("state"),
-  reload: document.getElementById("reload")
+  reload: document.getElementById("reload"),
+  siteRow: document.getElementById("siteRow"),
+  siteOff: document.getElementById("siteOff"),
+  siteHost: document.getElementById("siteHost")
 };
+
+let host = null;
+let disabled = [];
 
 function paint(enabled) {
   document.body.classList.toggle("off", !enabled);
-  el.state.textContent = enabled ? "On for every site" : "Off — pages left alone";
+  if (!enabled) el.state.textContent = "Off — pages left alone";
+  else if (host && disabled.includes(host)) el.state.textContent = "Off on " + host;
+  else el.state.textContent = "On for every site";
 }
 
-get().then((stored) => {
-  const s = { ...DEFAULTS, ...stored };
+(async () => {
+  const s = { ...DEFAULTS, ...(await get()) };
   el.enabled.checked = s.enabled;
   el.highlight.checked = s.highlight;
   el.showOriginal.checked = s.showOriginal;
+  disabled = Array.isArray(s.disabledHosts) ? s.disabledHosts : [];
+
+  host = await activeHost();
+  if (host) {
+    el.siteHost.textContent = host;
+    el.siteOff.checked = disabled.includes(host);
+    el.siteRow.hidden = false;
+  }
   paint(s.enabled);
+})();
+
+// Same reasoning as the master switch: dates already rewritten only revert on
+// a fresh load, so switching a site off reloads it straight away.
+el.siteOff.addEventListener("change", async () => {
+  if (!host) return;
+  const next = new Set(disabled);
+  if (el.siteOff.checked) next.add(host); else next.delete(host);
+  disabled = [...next];
+  paint(el.enabled.checked);
+  await set({ disabledHosts: disabled });
+  const reloaded = await reloadActiveTab();
+  if (reloaded) window.close();
+  else el.reload.hidden = false;
 });
 
 // The master switch reloads straight away: dates already rewritten only
