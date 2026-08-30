@@ -47,6 +47,61 @@ Firefox or Google account. That is the browser vendor's sync, not collection
 by this extension — the settings never reach any server operated by the
 developer, because there is no such server.
 
+## Host permission justification
+
+The `<all_urls>` field is asked separately from the per-permission ones.
+
+    The extension rewrites dates found in the text of whatever page the user
+    is reading, so it needs to run on any site the user visits. There is no
+    useful subset of the web to request instead: a date can appear on any
+    page, and the user cannot know in advance which pages will contain one.
+    Requesting a list of specific hosts would mean the extension silently
+    fails on every site not on the list.
+
+    Nothing is read from a page except its text nodes, and nothing leaves
+    the machine. The extension makes no network requests of any kind -- no
+    fetch, no XMLHttpRequest, no analytics, no telemetry. It has no server.
+    The only data it stores is the user's own settings, kept in browser
+    storage.
+
+    all_frames is set because dates appear inside iframes -- embedded
+    comment threads, dashboards, documentation viewers. Restricting to the
+    top frame would silently skip them.
+
+## Remote code
+
+Answer: **No.** Verified against the built package, not just asserted:
+
+- no `fetch`, `XMLHttpRequest`, `WebSocket`, `sendBeacon`, `EventSource` or
+  `importScripts`
+- no `eval`, no `new Function`, no string-form `setTimeout`
+- the only `script src` tags are `popup.js` and `options.js`, both files
+  inside the package
+- the only URLs anywhere in the package are the SVG namespace, the GNU URLs
+  inside the LICENSE text, and one `example.com` in a code comment
+
+`new Function` does appear in `test/dates.test.js`, which is how the tests
+reach a closed IIFE. `test/` is not shipped -- zero test files in the zip --
+but it is worth knowing in case a reviewer reads the repository.
+
+## User data collected
+
+Answer: **none of the categories.** Leave every box unchecked.
+
+The extension reads page text in memory to find dates and rewrites them in
+place. It never stores that text, never sends it anywhere, and has nowhere
+to send it. "Website content" is the box someone might reach for, since the
+extension does read page text -- but the question is what is *collected*,
+and nothing is retained or transmitted.
+
+The only thing stored is the user's own settings -- the six options and the
+list of sites switched off individually -- held in `storage.sync`, which is
+the browser's sync, not a server belonging to this extension.
+
+All three certification checkboxes are true and should be ticked: no selling
+or transferring data to third parties, no use unrelated to the single
+purpose, no use for creditworthiness or lending.
+
 ## Source and build
 
 Not obfuscated, not minified, no bundler. `src/` is plain JavaScript that
@@ -135,8 +190,8 @@ ragged. Both are why the examples are prose.
 
     No accounts, no network requests, no analytics, no data collection of
     any kind. Your settings are stored by your browser and never leave it.
-    The source is public and readable -- nothing minified, nothing
-    bundled.
+    Nothing is minified or bundled: the code that runs is the code as
+    written, and you can read all of it in the extension's own folder.
 
 ## Category
 
