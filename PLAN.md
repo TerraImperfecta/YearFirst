@@ -22,8 +22,10 @@ change from `background.scripts` to `background.service_worker` and looks
 right, but nobody has loaded it) and Safari (never been through
 `safari-web-extension-converter`).
 
-No automated tests exist. The matching logic was verified with throwaway
-scripts that were not kept. This is the biggest hole.
+Automated tests now cover the matching logic: 45 cases in
+`test/dates.test.js`, run with `node --test`, no dependencies. That closes
+what was the biggest hole. The DOM side (TreeWalker, MutationObserver,
+rewriting) is still only verified by hand against `test/test.html`.
 
 ## Layout
 
@@ -37,7 +39,9 @@ src/                 the extension — identical across all three browsers
   options.html/.js   full settings
   icons/             PNGs + icon.svg + make_icons.py
 test/test.html       manual test page, served over http
+test/dates.test.js   regression tests for the matching logic (node --test)
 dist/                build output, one loadable folder per browser
+.github/workflows/   CI (tests + dist/ drift check) and tagged releases
 ```
 
 `build.py` is the only thing that differs per browser. If a change needs a
@@ -112,10 +116,21 @@ quarter of the top-left gaps, on purpose.
 
 ## Tasks, in order
 
-### 1. Regression tests for the date logic
+### 1. Regression tests for the date logic — DONE
 
-The highest-value work. `findDates` and its helpers are pure functions over
-strings, so they need no DOM.
+Landed as `test/dates.test.js`. The corpus below is kept as the record of
+what is covered. `findDates` and its helpers are pure functions over strings,
+so they need no DOM.
+
+The tests slice the pure section out of `content.js` and evaluate it, bounded
+by string markers rather than line numbers — so editing `content.js` moves the
+boundaries with it, and a missing marker fails the run instead of silently
+testing the wrong range. `content.js` itself is untouched and still ships as
+one self-contained IIFE.
+
+CI runs these on every PR, alongside a check that `dist/` still matches a
+fresh build. That second job matters because `dist/` is committed and the
+README promises it is loadable without building.
 
 Extract the patterns and helpers (`MONTHS` through `findDates`, currently
 lines ~25–167 of `content.js`) into something importable without breaking
@@ -181,6 +196,9 @@ global `enabled` flag so the two don't fight.
 
 ### 4. Safari
 
+Licensing is settled: this target ships MPL-2.0, handled by `build.py`. No
+action needed beyond not undoing it.
+
 `xcrun safari-web-extension-converter dist/safari` on macOS with Xcode.
 Needs Safari → Settings → Advanced → show developer features, then
 Develop → Allow Unsigned Extensions, which resets on every Safari restart.
@@ -191,14 +209,24 @@ reliably if the iOS target is built — `--macos-only` avoids that for now.
 
 ### 5. Release prep
 
-- Replace the placeholder add-on ID `year-first@example.com` in `build.py`
-  with one on a domain that is actually controlled. Changing it resets
-  everyone's `storage.sync` settings, so do it before any public release,
-  never after.
-- Add a LICENSE and a CHANGELOG.
-- Write the data-collection declaration both stores ask for. The true answer
-  is none: no network requests, no analytics, settings live in browser
-  storage and never leave the machine.
+- ~~Replace the placeholder add-on ID.~~ DONE — now
+  `year-first@immanuelqrw.dev`. It was worth doing first: the ID keys
+  `storage.sync`, so changing it after release silently resets everyone's
+  settings.
+- ~~Add a LICENSE and a CHANGELOG.~~ DONE — GPL-3.0, plus `CHANGELOG.md`.
+- ~~Write the data-collection declaration.~~ DONE — drafted in
+  `STORE-NOTES.md`, along with the `<all_urls>` justification every store
+  asks for. The answer is none, and it is verifiable from source: no network
+  calls, no eval, no remote code, no identifiers.
+- ~~GPL-3.0 conflicts with the Apple App Store.~~ RESOLVED — dual licensed
+  by channel. GPL-3.0-or-later for Firefox, Chrome and this repository;
+  MPL-2.0 for the Safari build only, because Apple's terms impose usage
+  restrictions that GPLv3 section 10 forbids adding downstream. `build.py`
+  ships the right text per target and retags the sources; a test asserts it.
+  Note the knock-on: the Safari build is readable JS under MPL, so anyone may
+  take that copy into a closed product. The GPL on the other builds does not
+  prevent that. Accepted deliberately, not overlooked.
+- Still to do: screenshots and listing copy for all three stores.
 - `python3 build.py --zip` produces the store uploads.
 - Costs: Firefox signing free (self-distribution allowed), Chrome $5 once,
   Safari $99/year plus shipping inside a native app.
