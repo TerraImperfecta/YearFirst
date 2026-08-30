@@ -22,6 +22,58 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_PROJECT = Path.home() / "Developer/YearFirst-Safari/Year First/Year First.xcodeproj/project.pbxproj"
 
+# Blueprint identifier of the app target, read out of project.pbxproj. Hard to
+# guess and stable across regeneration only if the converter reuses it, so it
+# is looked up rather than baked in.
+APP_TARGET_RE = re.compile(
+    r"(\w{24}) /\* Year First \*/ = \{\s*isa = PBXNativeTarget;.*?"
+    r'productType = "com\.apple\.product-type\.application";', re.S)
+
+POST_ACTION_TITLE = "Drop the Safari extension row this build just registered"
+
+SCHEME = """<?xml version="1.0" encoding="UTF-8"?>
+<Scheme LastUpgradeVersion = "2600" version = "1.7">
+   <BuildAction buildImplicitDependencies = "YES" parallelizeBuildables = "YES">
+      <PostActions>
+         <ExecutionAction ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
+            <ActionContent title = "{title}" scriptText = "{script}">
+               <EnvironmentBuildable>
+                  <BuildableReference {ref} />
+               </EnvironmentBuildable>
+            </ActionContent>
+         </ExecutionAction>
+      </PostActions>
+      <BuildActionEntries>
+         <BuildActionEntry buildForAnalyzing = "YES" buildForArchiving = "YES" buildForProfiling = "YES" buildForRunning = "YES" buildForTesting = "YES">
+            <BuildableReference {ref} />
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction buildConfiguration = "Debug" selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv = "YES">
+      <Testables>
+      </Testables>
+   </TestAction>
+   <LaunchAction buildConfiguration = "Debug" selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB" launchStyle = "0" useCustomWorkingDirectory = "NO" ignoresPersistentStateOnLaunch = "NO" debugDocumentVersioning = "YES" debugServiceExtension = "internal" allowLocationSimulation = "YES">
+      <BuildableProductRunnable runnableDebuggingMode = "0">
+         <BuildableReference {ref} />
+      </BuildableProductRunnable>
+   </LaunchAction>
+   <ProfileAction buildConfiguration = "Release" shouldUseLaunchSchemeArgsEnv = "YES" savedToolIdentifier = "" useCustomWorkingDirectory = "NO" debugDocumentVersioning = "YES">
+      <BuildableProductRunnable runnableDebuggingMode = "0">
+         <BuildableReference {ref} />
+      </BuildableProductRunnable>
+   </ProfileAction>
+   <AnalyzeAction buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <ArchiveAction buildConfiguration = "Release" revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
+</Scheme>
+"""
+
+BUILDABLE_REF = ('BuildableIdentifier = "primary" BlueprintIdentifier = "{bid}" '
+                 'BuildableName = "Year First.app" BlueprintName = "Year First" '
+                 'ReferencedContainer = "container:Year First.xcodeproj"')
+
 BUNDLE_RE = re.compile(r'PRODUCT_BUNDLE_IDENTIFIER = "([^"]+)";')
 
 
@@ -175,6 +227,43 @@ def bump_build(text, report):
     return text
 
 
+def install_post_action(project: Path, text: str, report, apply=True) -> bool:
+    """Write a shared scheme whose build post-action runs the cleanup.
+
+    Xcode autocreates this project's scheme, so there is no file to patch --
+    the scheme has to be written out in full before a post-action can be
+    attached to it. That is also why this belongs here: a shared scheme is
+    exactly the kind of state regenerating the project throws away.
+
+    A post-action rather than a Run Script build phase, because a build phase
+    runs inside the build and the .appex is registered a moment after the
+    build finishes -- a phase would clean up before there was anything to
+    clean up. The script waits for the row instead of assuming it is there.
+    """
+    m = APP_TARGET_RE.search(text)
+    if not m:
+        raise SystemExit("could not find the Year First app target in project.pbxproj")
+    ref = BUILDABLE_REF.format(bid=m.group(1))
+
+    cleanup = ROOT / "tools" / "clean-safari-registrations.py"
+    # Escaped for an XML attribute, which is where scriptText lives.
+    script = (f"/usr/bin/python3 &quot;{cleanup}&quot; --wait 20\n")
+
+    scheme = project.parent / "xcshareddata" / "xcschemes" / "Year First.xcscheme"
+    wanted = SCHEME.format(title=POST_ACTION_TITLE, script=script, ref=ref)
+    have = scheme.read_text() if scheme.is_file() else None
+    if have == wanted:
+        report("build post-action", f"installed in {scheme.name}", False)
+        return False
+    if not apply:
+        report("build post-action", f"missing from {scheme.name}", True)
+        return True
+    scheme.parent.mkdir(parents=True, exist_ok=True)
+    scheme.write_text(wanted)
+    report("build post-action", f"written to {scheme.name}", True)
+    return True
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -205,6 +294,7 @@ def main() -> int:
         text = fix(text, report)
     if args.bump_build and not args.check:
         text = bump_build(text, report)
+    install_post_action(args.project, text, report, apply=not args.check)
 
     if not any(changed_any):
         print("nothing to do")
