@@ -90,10 +90,10 @@ Draft. Written to be pasted, then edited — the voice should be yours.
 
 ## Short description
 
-Chrome allows 132 characters, AMO's summary allows 250. This fits both:
+Chrome allows 132 characters, AMO's summary allows 250. This fits both, and
+matches the promo tile:
 
-    Rewrites every date on a page to YYYY-MM-DD, so 05/01 stops being an
-    argument.
+    Every date on the page, in one format: YYYY-MM-DD.
 
 ## Detailed description
 
@@ -105,38 +105,38 @@ ragged. Both are why the examples are prose.
 
     Every date on the page, in one format: 2024-01-05.
 
-    Year First rewrites dates as it finds them, in the order that actually
-    sorts — largest unit first. It reads the formats people really write:
-    January 5, 2024 and 5 Jan 2024 both become 2024-01-05. 23/07/2024
-    becomes 2024-07-23, 2024/3/9 becomes 2024-03-09, and 3/4/25 becomes
-    2025-04-03.
+    Year First rewrites dates as it finds them, largest unit first, in the
+    order that actually sorts. It reads the formats people write: January
+    5, 2024 and 5 Jan 2024 both become 2024-01-05; 23/07/2024 becomes
+    2024-07-23; 3/4/25 becomes 2025-04-03.
 
     05/01/2024 is the hard one, because it means two different days
     depending on who wrote it. Year First looks for other dates on the same
     page that can only be read one way -- anything with a part above 12 --
-    and lets those decide. If the page gives no clue, it falls back to the
-    page's own language setting. You can also just tell it: day first,
-    month first, or work it out.
+    and lets those decide. Failing that it uses the page's own language. Or
+    you can simply tell it: day first, month first, or work it out.
 
     Timestamps marked up as time elements are read from their machine-
     readable attribute, so "three hours ago" becomes a real date.
 
+    Some sites are better left as they are -- code review tools, log
+    viewers, anything where the original string is the point. The toolbar
+    popup has an off switch for the site you are on, separate from the
+    global one.
+
     It is careful about what it does not touch. Code, preformatted text,
     input fields and anything you are editing are left alone. Version
-    numbers like 1.2.3 survive. So do fractions, year ranges, and dates
-    that do not exist, like 31/02/2024. Add data-no-year-first to any
-    element to skip it and everything inside it.
+    numbers like 1.2.3 survive, as do fractions, year ranges, and
+    impossible dates like 31/02/2024. A date already written as 2024-01-05
+    is left exactly as it is. Add data-no-year-first to skip any element
+    and everything inside it.
 
     Dates that appear after the page loads get rewritten too.
 
     No accounts, no network requests, no analytics, no data collection of
     any kind. Your settings are stored by your browser and never leave it.
-    The source is public and readable -- nothing is minified or bundled.
-
-    Options: how to read ambiguous numeric dates, whether to use time-
-    element attributes, whether to convert a bare month and year, whether
-    to keep the original text as a tooltip, and whether to underline what
-    was changed.
+    The source is public and readable -- nothing minified, nothing
+    bundled.
 
 ## Category
 
