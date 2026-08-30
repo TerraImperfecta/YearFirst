@@ -603,6 +603,36 @@ reliably if the iOS target is built — `--macos-only` avoids that for now.
 - Costs: Firefox signing free (self-distribution allowed), Chrome $5 once,
   Safari $99/year plus shipping inside a native app.
 
+**What each store actually got for 1.0.1.** The three submissions were
+packaged at different times while work continued, so they are not the same
+build. Established by diffing the uploaded artifacts against the tags, not
+from memory:
+
+| Store | Built from | Notes |
+| --- | --- | --- |
+| Chrome | the `v1.0.1` tag exactly | `~/Downloads/year-first-chrome.zip` |
+| Firefox / AMO | the `v1.0.1` tag exactly | `~/Downloads/year-first-firefox.zip` |
+| Mac App Store | tag + #26 | from the Xcode archive, `1.0.1 (1)` |
+
+The Safari build is ahead by #26, the per-site off switch fix -- which is
+Safari-only, an added fallback for `tab.url` not being exposed there. Chrome
+and Firefox take the `tab.url` path unchanged, so they are missing nothing
+that affects them. No store got a broken build.
+
+Compare with the SPDX line normalised away, or everything looks different:
+`build.py` retags the identifier per target, so the Safari copy differs from
+`src/` on that line in every file.
+
+None of the three has #31 (`aria-label` for screen readers), #35 (the
+disabled-hosts list on the options page), or #36 (applying a toggle without
+reloading). Those are the contents of 1.0.2, and it would put all three
+stores back on the same source.
+
+One thing not checkable from here: the accessibility declarations filled in
+on App Store Connect. Nothing in `STORE-NOTES.md` claims screen-reader
+support, but if anything VoiceOver-related was ticked there, the submitted
+build predates #31.
+
 ## Out of scope unless asked
 
 Shadow DOM (GitHub's `<relative-time>` and similar are unreachable from a
