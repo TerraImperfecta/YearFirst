@@ -199,7 +199,24 @@ extension reload. Nothing needed fixing — the one-line manifest patch from
 
 If this ever regresses, fix it in `build.py`'s chrome patch, not in `src/`.
 
-### 3. Per-site disable
+### 3. Per-site disable — DONE
+
+Built as designed below. `disabledOrigins` is a list of origins in
+`storage.sync`, checked in `start()` before anything happens. The popup shows
+an "Off on <host>" row when the active tab is http(s), writes the origin and
+reloads, matching how the master switch already behaves. `activeTab` supplies
+the URL, so no new permission was needed.
+
+Two details worth keeping. It matches on ORIGIN, not hostname: switching off
+`http://example.com` must not also switch off `https://example.com`, and a
+test asserts that specifically. And `disabledOrigins` is a separate key from
+`enabled`, so turning a site back on cannot silently flip the master switch.
+
+Not built: a way to review or clear the list from the options page. Today the
+only way to re-enable a site is to open the popup on it. That is discoverable
+enough for now, but it is the obvious follow-up.
+
+The original design notes follow.
 
 The most likely thing to be missed in daily use — sites where the original
 date string matters, like code review tools. Design notes: store a list of

@@ -26,10 +26,10 @@ const SOURCE = readFileSync(join(HERE, "..", "src", "content.js"), "utf8");
 
 /* Boot the real content script over `html` with `settings` layered onto
  * whatever defaults the script itself asks storage for. */
-function boot(html, settings = {}, lang = "en-US") {
+function boot(html, settings = {}, { lang = "en-US", url = "https://example.com/page" } = {}) {
   const dom = new JSDOM(
     `<!doctype html><html lang="${lang}"><body>${html}</body></html>`,
-    { runScripts: "dangerously" }
+    { runScripts: "dangerously", url }
   );
   const { window } = dom;
   window.chrome = {
@@ -212,6 +212,47 @@ test("does not rewrite an already-rewritten date a second time", async () => {
     "exactly one span per date, not nested or duplicated");
   assert.equal(document.querySelector("span.year-first-date span"), null,
     "spans must not nest");
+});
+
+/* ------------------------------------------------------------------ *
+ * Per-site off switch
+ * ------------------------------------------------------------------ */
+
+test("does nothing on an origin the user has switched off", async () => {
+  const dom = boot("<p>Filed on January 5, 2024 today.</p>",
+    { disabledOrigins: ["https://example.com"] });
+  await new Promise((r) => dom.window.setTimeout(r, 300));
+  assert.equal(textOf(dom, "p"), "Filed on January 5, 2024 today.");
+});
+
+test("still runs on an origin that is not on the list", async () => {
+  const dom = boot("<p>Filed on January 5, 2024 today.</p>",
+    { disabledOrigins: ["https://elsewhere.example"] });
+  await waitFor(dom.window, () => textOf(dom, "p").includes("2024-01-05"),
+    { label: "rewrite on an unlisted origin" });
+});
+
+test("matches on origin, not on hostname alone", async () => {
+  // http://example.com and https://example.com are different origins, and
+  // switching one off must not silently switch off the other.
+  const dom = boot("<p>Filed on January 5, 2024 today.</p>",
+    { disabledOrigins: ["http://example.com"] },
+    { url: "https://example.com/page" });
+  await waitFor(dom.window, () => textOf(dom, "p").includes("2024-01-05"),
+    { label: "rewrite despite a same-host different-scheme entry" });
+});
+
+test("a disabled origin does not stop other sites, and does not touch the master switch", async () => {
+  const dom = boot("<p>Filed on January 5, 2024 today.</p>",
+    { enabled: true, disabledOrigins: ["https://example.com"] });
+  await new Promise((r) => dom.window.setTimeout(r, 300));
+  assert.equal(textOf(dom, "p"), "Filed on January 5, 2024 today.", "this origin is off");
+
+  const other = boot("<p>Filed on January 5, 2024 today.</p>",
+    { enabled: true, disabledOrigins: ["https://example.com"] },
+    { url: "https://other.example/page" });
+  await waitFor(other.window, () => textOf(other, "p").includes("2024-01-05"),
+    { label: "a different origin to be unaffected" });
 });
 
 /* ------------------------------------------------------------------ *
