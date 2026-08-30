@@ -29,6 +29,10 @@ any store.
   "three hours ago" become real dates.
 - Optional `March 2024` → `2024-03` conversion, off by default.
 - Rewrites content added after load, via a MutationObserver.
+- Finds dates broken across inline markup, so a date written with the space
+  inside its own element -- as Wikipedia does -- is still rewritten. Only
+  whitespace gaps are joined; a date split across two links is left alone
+  rather than have the links deleted.
 - Toolbar popup with an on/off switch and the two appearance toggles; an
   "off" badge on the toolbar icon when rewriting is disabled.
 - Options page with a live preview of the ambiguous case.

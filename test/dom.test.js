@@ -163,6 +163,60 @@ test("leaves strings that are not dates alone", async () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * Dates broken across inline markup
+ * ------------------------------------------------------------------ */
+
+test("joins a date split by a whitespace-only inline element", async () => {
+  // Exactly how Wikipedia writes it: the non-breaking space is its own span,
+  // so no single text node holds the date.
+  const dom = boot('<p>midnight UTC on 1<span> </span>January 1970, with more.</p>');
+  await waitFor(dom.window, () => textOf(dom, "p").includes("1970-01-01"),
+    { label: "the split date to be joined" });
+  assert.match(textOf(dom, "p"), /midnight UTC on 1970-01-01, with more\./);
+});
+
+test("the tooltip carries the whole original, including the gap", async () => {
+  const dom = boot('<p>on 1<span> </span>January 1970, more.</p>', { showOriginal: true });
+  const span = await waitFor(dom.window,
+    () => dom.window.document.querySelector("span.year-first-date"), { label: "span" });
+  assert.match(span.title, /^1\s+January 1970$/, "should be the text it replaced, gap and all");
+});
+
+test("refuses to join when the gap holds real content", async () => {
+  // Two links with a comma between them. Rewriting across this would have to
+  // delete the elements holding the date, so it must not happen.
+  const dom = boot('<p>on <a href="/x">1 January</a>, <a href="/y">1970</a> here.</p>');
+  await new Promise((r) => dom.window.setTimeout(r, 300));
+  assert.equal(dom.window.document.querySelectorAll("a").length, 2, "both links must survive");
+  assert.match(textOf(dom, "p"), /1 January, 1970/, "text must be untouched");
+});
+
+test("does not join across a line break", async () => {
+  const dom = boot("<p>Invoiced 23/07<br>/2024 here.</p>");
+  await new Promise((r) => dom.window.setTimeout(r, 300));
+  assert.ok(!textOf(dom, "p").includes("2024-07-23"),
+    "a date either side of a <br> is two things to the reader");
+});
+
+test("does not join across a block boundary", async () => {
+  // The trailing space is load-bearing. Without it the concatenation would be
+  // "1January", which cannot match regardless, and this test would pass even
+  // with the block guard removed.
+  const dom = boot("<p>ends with 1 </p><p>January 1970 starts the next.</p>");
+  await new Promise((r) => dom.window.setTimeout(r, 300));
+  assert.ok(!textOf(dom).includes("1970-01-01"),
+    "two paragraphs are not one string, however they concatenate");
+});
+
+test("still rewrites normally inside a run that also has markup", async () => {
+  const dom = boot('<p>Filed <b>on</b> January 5, 2024 and 23/07/2024 too.</p>');
+  await waitFor(dom.window, () => textOf(dom, "p").includes("2024-01-05"), { label: "first date" });
+  assert.match(textOf(dom, "p"), /2024-01-05/);
+  assert.match(textOf(dom, "p"), /2024-07-23/);
+  assert.equal(dom.window.document.querySelectorAll("b").length, 1, "unrelated markup untouched");
+});
+
+/* ------------------------------------------------------------------ *
  * <time datetime="...">
  * ------------------------------------------------------------------ */
 
