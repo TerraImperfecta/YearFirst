@@ -107,6 +107,17 @@ framework-managed DOM can break re-rendering on some sites. Both appearance
 options default to on; if a site misbehaves the fix is turning them off, not
 removing the plain path.
 
+**Matches that would not change the text are dropped before rewriting.**
+`rewriteTextNode` filters `d.value !== d.raw`. This looks like an
+optimisation and is not. Without it, `rewriteTimeElements` sets a `<time>`
+element's text to the ISO value, and the TreeWalker pass immediately after
+treats that as a plain date and wraps it in a nested span. The span covers the
+text, so its title wins on hover and the user sees the new date instead of the
+original the element's own title was holding. It also stops a date already
+written as `YYYY-MM-DD` collecting a span, an underline and a tooltip that
+repeats what is on screen. Found on nodejs.org, where all 48 dates are `<time>`
+elements.
+
 **The on-page underline uses `currentColor`, not the brand amber.** An amber
 dotted underline under a date is indistinguishable from a spellcheck
 squiggle. Do not "fix" this to match the accent.

@@ -50,5 +50,7 @@ any store.
 - Two-digit years match only with slashes (`3/4/25`), so version strings like
   `1.2.3` survive. Years 00–68 map to 2000s, 69–99 to 1900s.
 - Impossible dates such as `31/02/2024` are ignored.
+- Dates already written as `YYYY-MM-DD` are left entirely alone: no span, no
+  underline, and no tooltip repeating what is already on screen.
 - Month names are English only.
 - Dates inside shadow DOM are not reached.
