@@ -196,7 +196,14 @@
   function rewriteTextNode(node, opts) {
     const text = node.nodeValue;
     if (!text || text.length < 6) return;
-    const dates = findDates(text, opts);
+    // Drop matches that would not change the text. Two things depend on this.
+    // A date already written as YYYY-MM-DD gains nothing from a span, an
+    // underline and a tooltip repeating what is on screen. And a <time>
+    // element whose text rewriteTimeElements has just replaced would
+    // otherwise be rewritten again here, nesting a span whose title covers
+    // the element's own title -- so hovering showed the new date instead of
+    // the original text it replaced.
+    const dates = findDates(text, opts).filter((d) => d.value !== d.raw);
     if (!dates.length) return;
 
     // Plain text swap keeps the DOM shape identical, which matters on

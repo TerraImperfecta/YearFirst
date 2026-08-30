@@ -97,6 +97,42 @@ test("highlight applies a dotted underline in currentColor", async () => {
     "must not use the brand accent -- an amber squiggle reads as a spellcheck error");
 });
 
+test("a date already in the target format is left completely alone", async () => {
+  // Wrapping it gains nothing: the span, the underline and a tooltip that
+  // repeats the visible text are all noise.
+  const dom = boot("<p>Log line 2024-03-09 14:02 UTC.</p>",
+    { showOriginal: true, highlight: true });
+  await new Promise((r) => dom.window.setTimeout(r, 300));
+  assert.equal(dom.window.document.querySelector("span.year-first-date"), null,
+    "no markup should be added when the text would not change");
+  assert.equal(textOf(dom, "p"), "Log line 2024-03-09 14:02 UTC.");
+});
+
+test("a date that only needs padding is still rewritten", async () => {
+  // Guards against over-correcting the above: 2024-1-5 differs from
+  // 2024-01-05, so it is a real change and must still happen.
+  const dom = boot("<p>Already tidy: 2024-1-5 needs padding.</p>",
+    { showOriginal: true, highlight: false });
+  const span = await waitFor(dom.window,
+    () => dom.window.document.querySelector("span.year-first-date"), { label: "span" });
+  assert.equal(span.textContent, "2024-01-05");
+  assert.equal(span.title, "2024-1-5");
+});
+
+test("a rewritten time element keeps the original text as its tooltip", async () => {
+  const dom = boot('<p>Posted <time datetime="2023-11-14">three years ago</time>.</p>',
+    { showOriginal: true, highlight: true });
+  await waitFor(dom.window, () => textOf(dom, "time") === "2023-11-14", { label: "time rewrite" });
+  await new Promise((r) => dom.window.setTimeout(r, 200));
+
+  const time = dom.window.document.querySelector("time");
+  assert.equal(time.querySelector("span.year-first-date"), null,
+    "the ISO text must not be re-wrapped inside the time element -- a nested " +
+    "span covers the text and its title wins on hover, hiding the original");
+  assert.equal(time.title, "three years ago",
+    "hovering should show what the date replaced, not the date again");
+});
+
 /* ------------------------------------------------------------------ *
  * What must be left alone
  * ------------------------------------------------------------------ */
