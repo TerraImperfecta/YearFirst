@@ -390,6 +390,27 @@ outright if what it was told to keep is not registered, so a typo leaves
 duplicates rather than an empty pane. This is not a one-shot fix: run it
 after building.
 
+**Xcode cleans up after itself now.** `fix-safari-project.py` installs a
+shared scheme whose *build post-action* runs the cleanup, so a build that
+adds a row removes it again before you notice.
+
+A post-action rather than a Run Script build phase: a build phase runs inside
+the build, and the .appex is registered a moment *after* the build finishes,
+so a phase would tidy up before there was anything to tidy. The post-action
+polls (`--wait 20`) instead of assuming the row is already there, and always
+exits 0 -- Xcode reports a failing post-action as a build failure, and a
+duplicate row is not worth failing a build over. It removes records only,
+never products: the product belongs to the build that just made it, and
+deleting it would pull the app out from under a Run action.
+
+Verified on a real build -- `Run post-actions` / `year-first: removed
+build:Debug row` / `** BUILD SUCCEEDED **`, one row left afterwards.
+
+The scheme has to be written out in full rather than patched, because Xcode
+autocreates this project's scheme and there is no file on disk until someone
+edits it. That also makes it exactly the kind of state regenerating the
+project throws away, which is why it lives in this script.
+
 **Run `tools/fix-safari-project.py` after generating or regenerating the
 project.** The three fixes below live only in the generated project, which is
 not in version control, so regenerating loses all of them. The script applies
