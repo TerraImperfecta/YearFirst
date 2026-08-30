@@ -149,6 +149,32 @@ FIXES = (fix_bundle_identifier, fix_marketing_version, fix_network_entitlement,
          fix_deployment_target, fix_app_category)
 
 
+def bump_build(text, report):
+    """Increment CURRENT_PROJECT_VERSION -- the build number.
+
+    Not part of FIXES, because it changes state rather than restoring it. Run
+    it before each archive, with --bump-build.
+
+    Two reasons it matters. App Store Connect refuses a second upload with the
+    same version AND build number, so a rejected 1.0.1 cannot be fixed and
+    re-uploaded until this moves. And archives are named by timestamp, so with
+    a constant build number two archives are labelled identically in Organizer
+    while containing different code -- which is how a build without the fix in
+    it nearly got uploaded.
+    """
+    found = sorted({v.strip() for v in re.findall(r"CURRENT_PROJECT_VERSION = ([^;]+);", text)})
+    if len(found) != 1:
+        raise SystemExit(f"expected one build number, found {found}")
+    try:
+        nxt = int(found[0]) + 1
+    except ValueError:
+        raise SystemExit(f"build number is not an integer: {found[0]!r}")
+    text = text.replace(f"CURRENT_PROJECT_VERSION = {found[0]};",
+                        f"CURRENT_PROJECT_VERSION = {nxt};")
+    report("build number", f"{found[0]} -> {nxt}", True)
+    return text
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -156,6 +182,8 @@ def main() -> int:
                     help="path to project.pbxproj")
     ap.add_argument("--check", action="store_true",
                     help="report what would change and exit non-zero if anything would")
+    ap.add_argument("--bump-build", action="store_true",
+                    help="also increment the build number; run before each archive")
     args = ap.parse_args()
 
     if not args.project.is_file():
@@ -175,6 +203,8 @@ def main() -> int:
     text = original
     for fix in FIXES:
         text = fix(text, report)
+    if args.bump_build and not args.check:
+        text = bump_build(text, report)
 
     if not any(changed_any):
         print("nothing to do")
