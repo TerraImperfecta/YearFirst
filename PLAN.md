@@ -336,42 +336,59 @@ so the remaining ones are never ambiguous.
 restore a known state and are idempotent, this one changes state every time.
 
 **Safari's Extensions pane reads PlugInKit, not LaunchServices.** This is
-the whole trap. `lsregister -dump` lists every built copy of the app, which
-looks like the answer, and `lsregister -u` removes them -- and Safari's list
-does not change, because Safari never consulted it. PlugInKit keeps separate
-records, one per .appex path, and shows one row per record. Debug and Release
-are two rows with the same name and the same icon, and the one you tick is
-not necessarily the one that is running; the app then reports its extension
-as off while the extension is plainly working.
+the whole trap. `lsregister -dump` also lists every built copy of the app,
+which looks like the answer, and `lsregister -u` removes them -- and Safari's
+list does not change, because Safari never consulted it. PlugInKit keeps its
+own records, one per .appex path, and shows one row per record.
 
 ```
-pluginkit -m -A -D -i dev.immanuelqrw.year-first.Extension -vvv
+pluginkit -m -A -D -i dev.immanuelqrw.year-first.Extension -vvv   # ground truth
+pluginkit -r "<path to .appex>"                                   # remove one
 ```
 
-is the ground truth. `pluginkit -r <path to .appex>` removes a record.
+Safari's own container is TCC-protected, so nothing in a terminal can read
+the pane directly. PlugInKit is the closest thing to it; the final word is
+the screen.
 
-**Only a signed build registers.** A build re-registers its .appex with
-PlugInKit as it finishes, so duplicates come back whenever Xcode builds a
-configuration you had cleaned up -- but `CODE_SIGNING_ALLOWED=NO` builds do
-not register at all. That is worth knowing before trying to reproduce this:
-an unsigned test build produces the product on disk and no new row, which
+**Every signed build registers, and Xcode cannot be told not to.** There is
+no build setting or defaults key for it -- I went looking through Xcode's
+frameworks and there is nothing. A Debug build adds a row within seconds of
+finishing, and restarting Safari does not clear it because the row is real.
+Confirmed by observation: install, one row; rebuild, two rows; restart
+Safari, still two.
+
+Unsigned builds (`CODE_SIGNING_ALLOWED=NO`) register nothing. Worth knowing
+before reproducing this -- the product lands on disk, no row appears, and it
 looks like the bug fixing itself.
 
-Removing the record is half of it. The .appex has to come off disk too, or
-the next build of that configuration puts the row straight back. If Xcode is
-open on the project, expect Debug to return the next time you build.
+**Do not run the extension out of DerivedData.** That was the underlying
+mistake here. Xcode owns that directory: it recreates products after they are
+deleted (twice within minutes, while cleanup scripts raced it) and silently
+swaps the copy Safari points at. The copy in daily use belongs in
+/Applications, where Xcode cannot touch it:
 
 ```
-python3 tools/clean-safari-registrations.py --check          # what Safari sees
-python3 tools/clean-safari-registrations.py --keep Release   # leave exactly one
+ditto "<DerivedData>/Build/Products/Release/Year First.app" \
+      "/Applications/Year First.app"
+open "/Applications/Year First.app"     # launching is what registers it
 ```
 
-`--keep` removes the other configurations' PlugInKit records, then deletes
-their build products -- in that order, since removing the product first
-leaves a stale record pointing at nothing, which Safari still renders. It
-also clears the matching LaunchServices entries, which do not affect Safari
-but are why the app shows up repeatedly in Spotlight. Quit Safari fully
-afterwards (Cmd-Q); it caches the list.
+The .appex cannot be registered on its own; `lsregister -f` on it reports
+-10811, not an application. Launching the container is the way.
+
+With that install in place, the cleanup keeps it and drops everything else:
+
+```
+python3 tools/clean-safari-registrations.py --check   # what Safari sees
+python3 tools/clean-safari-registrations.py           # keep the install
+python3 tools/clean-safari-registrations.py --keep Debug   # while developing
+```
+
+It removes each record before deleting its product -- the other order leaves
+a record pointing at nothing, which Safari still renders -- and refuses
+outright if what it was told to keep is not registered, so a typo leaves
+duplicates rather than an empty pane. This is not a one-shot fix: run it
+after building.
 
 **Run `tools/fix-safari-project.py` after generating or regenerating the
 project.** The three fixes below live only in the generated project, which is

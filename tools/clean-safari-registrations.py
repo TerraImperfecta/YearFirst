@@ -1,23 +1,40 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Remove duplicate "Year First" rows from Safari's Extensions pane.
+"""Drop the duplicate "Year First" rows Xcode leaves in Safari's Extensions pane.
 
-Safari builds that list from **PlugInKit**, not LaunchServices. This matters,
-because the obvious tool is the wrong one: `lsregister -dump` also lists every
-built copy of the app, and unregistering them with `lsregister -u` changes
-nothing that Safari displays. PlugInKit keeps its own records, one per .appex
-path, and Safari shows one row per record -- so Debug and Release are two
-rows with the same name and icon, and the one you tick is not necessarily the
-one that is running.
+Safari builds that list from **PlugInKit**, not LaunchServices. This is the
+trap: `lsregister -dump` also lists every built copy of the app, so it looks
+like the right tool, but `lsregister -u` removes entries Safari never reads
+and the rows do not move. PlugInKit keeps its own records, one per .appex
+path, and Safari shows one row per record.
 
-Every build registers its .appex with PlugInKit, so the duplicates come back
-whenever Xcode builds a configuration you had cleaned up. Removing the record
-is therefore only half of it; the .appex has to come off disk too, or the next
-build of that configuration re-registers it. If Xcode is open on the project,
-expect Debug to return the next time you hit Run.
+    pluginkit -m -A -D -i dev.immanuelqrw.year-first.Extension -vvv
 
-    python3 tools/clean-safari-registrations.py --check
-    python3 tools/clean-safari-registrations.py --keep Release
+is the ground truth; `pluginkit -r <path to .appex>` removes a record.
+
+**Every signed build registers, and there is no way to stop it.** Xcode has
+no setting to skip it, so a Debug build adds a row within seconds of
+finishing -- restarting Safari does not help, because the row is real. This
+is therefore not a one-shot fix but something to run after building.
+(Unsigned builds, `CODE_SIGNING_ALLOWED=NO`, register nothing. Worth knowing
+before reproducing this: the product lands on disk, no row appears, and it
+looks like the bug fixed itself.)
+
+The copy you actually use should live in /Applications, where Xcode cannot
+recreate it. Running the extension straight out of DerivedData means Xcode
+owns the copy Safari points at, and rebuilds silently swap it underneath you.
+Install once with:
+
+    ditto "<DerivedData>/Build/Products/Release/Year First.app" \\
+          "/Applications/Year First.app"
+
+Then, with no arguments, this script keeps that install and removes every
+build-output record and product:
+
+    python3 tools/clean-safari-registrations.py --check   # what Safari sees
+    python3 tools/clean-safari-registrations.py           # keep the install
+    python3 tools/clean-safari-registrations.py --keep Debug
+                          # while developing: keep a build, drop the rest
 
 Quit Safari fully afterwards (Cmd-Q) -- it caches the list.
 """
@@ -32,11 +49,11 @@ import sys
 
 EXTENSION_ID = "dev.immanuelqrw.year-first.Extension"
 APP = "Year First.app"
+INSTALLED = f"/Applications/{APP}"
 LSREGISTER = ("/System/Library/Frameworks/CoreServices.framework/Versions/A"
               "/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister")
-PRODUCTS = os.path.expanduser(
-    "~/Library/Developer/Xcode/DerivedData/Year_First-*/Build/Products")
-PLUGINKIT_PATH_RE = re.compile(r"^\s*Path\s*=\s*(/.*\.appex)\s*$")
+DERIVED = os.path.expanduser("~/Library/Developer/Xcode/DerivedData/Year_First-*")
+PK_PATH_RE = re.compile(r"^\s*Path\s*=\s*(/.*\.appex)\s*$")
 LS_PATH_RE = re.compile(r"^\s*path:\s*(/.*?)(?:\s*\(0x[0-9a-f]+\))?\s*$")
 
 
@@ -47,21 +64,25 @@ def records():
         capture_output=True, text=True).stdout
     # Parsed line by line rather than with a path regex: these paths contain
     # spaces, including inside directory names, so /\S+/ truncates them.
-    return sorted({m.group(1) for m in map(PLUGINKIT_PATH_RE.match, out.splitlines()) if m})
+    return sorted({m.group(1) for m in map(PK_PATH_RE.match, out.splitlines()) if m})
 
 
 def launch_services():
-    """Copies LaunchServices knows about. Secondary -- Safari ignores these,
-    but they are why the app shows up repeatedly in Spotlight."""
+    """Copies LaunchServices knows about. Safari ignores these; they are why
+    the app shows up repeatedly in Spotlight."""
     dump = subprocess.run([LSREGISTER, "-dump"], capture_output=True, text=True).stdout
     return sorted({m.group(1) for m in map(LS_PATH_RE.match, dump.splitlines())
                    if m and APP in m.group(1)})
 
 
-def products():
-    """Built .app copies on disk, as {configuration: path}."""
+def build_products():
+    """Built .app copies under DerivedData, as {configuration: path}.
+
+    Index.noindex holds Xcode's indexing build, a separate copy that is not
+    registered; it is left alone.
+    """
     out = {}
-    for root in glob.glob(PRODUCTS):
+    for root in glob.glob(os.path.join(DERIVED, "Build", "Products")):
         for config in sorted(os.listdir(root)):
             app = os.path.join(root, config, APP)
             if os.path.exists(app):
@@ -69,11 +90,13 @@ def products():
     return out
 
 
-def config_of(path, built):
+def origin(path, built):
+    if path.startswith(INSTALLED + os.sep) or path == INSTALLED:
+        return "installed"
     for config, app in built.items():
-        if path.startswith(app + os.sep) or path == app:
-            return config
-    return None
+        if path.startswith(app + os.sep):
+            return f"build:{config}"
+    return "unknown"
 
 
 def main() -> int:
@@ -82,66 +105,64 @@ def main() -> int:
     ap.add_argument("--check", action="store_true",
                     help="report and exit non-zero if Safari would show duplicates")
     ap.add_argument("--keep", metavar="CONFIG",
-                    help="configuration to keep (e.g. Release): PlugInKit records "
-                         "for every other configuration are removed and their build "
-                         "products deleted, then the kept app is relaunched")
+                    help="keep this build configuration instead of the "
+                         "/Applications install (for active development)")
     args = ap.parse_args()
 
-    built = products()
+    built = build_products()
     recs = records()
+    keep = f"build:{args.keep}" if args.keep else "installed"
 
-    print(f"Safari would show {len(recs)} row(s) -- PlugInKit records:")
+    print(f"Safari would show {len(recs) or 0} row(s):")
     for p in recs:
-        missing = "" if os.path.exists(p) else "(stale) "
-        print(f"  {missing}{config_of(p, built) or '?'}: {p}")
+        print(f"  {origin(p, built):16} {p}")
     if not recs:
         print("  (none)")
-
-    print(f"\n{len(built)} build product(s) on disk:")
-    for config, app in built.items():
-        print(f"  {config}: {app}")
+    if built:
+        print("\nbuild products on disk:")
+        for config, app in built.items():
+            print(f"  {config}: {app}")
 
     if args.check:
         dupes = len(recs) > 1
-        print("\n--check: " + ("duplicates -- run with --keep Release"
+        print("\n--check: " + ("duplicates -- run without --check"
                                if dupes else "one row, nothing to do"))
         return 1 if dupes else 0
 
-    if args.keep and args.keep not in built:
-        print(f"\nno {args.keep} product built -- have {sorted(built) or 'none'}",
-              file=sys.stderr)
+    # Refuse before touching anything if what we are told to keep is not there:
+    # better to leave duplicates than to leave the pane empty.
+    if keep not in {origin(p, built) for p in recs}:
+        have = sorted({origin(p, built) for p in recs}) or ["nothing registered"]
+        print(f"\nnothing registered for {keep} -- have {have}", file=sys.stderr)
+        if keep == "installed" and not os.path.exists(INSTALLED):
+            print(f"install it first:\n  ditto <build>/{APP} {INSTALLED!r}", file=sys.stderr)
         return 1
 
-    # Remove the PlugInKit record first. Doing it after deleting the .appex
-    # leaves a stale record pointing at nothing, which Safari still renders.
-    doomed = [p for p in recs if config_of(p, built) != args.keep] if args.keep else recs
-    for p in doomed:
-        subprocess.run(["pluginkit", "-r", p], capture_output=True)
+    # Remove the record before the product. The other order leaves a record
+    # pointing at nothing, which Safari still renders as a row.
+    for p in recs:
+        if origin(p, built) != keep:
+            subprocess.run(["pluginkit", "-r", p], capture_output=True)
+            print(f"\nremoved record: {p}")
 
     for p in launch_services():
-        if not args.keep or config_of(p, built) != args.keep:
+        if origin(p + "/x", built) != keep and not p.startswith(INSTALLED):
             subprocess.run([LSREGISTER, "-u", p], capture_output=True)
 
-    if not args.keep:
-        print(f"\nremoved {len(doomed)} record(s). The next build re-registers the "
-              "configuration it builds.")
-        return 0
-
     for config, app in built.items():
-        if config != args.keep:
+        if f"build:{config}" != keep:
             shutil.rmtree(os.path.dirname(app))
-            print(f"\ndeleted {config} product")
+            print(f"deleted {config} product")
 
     left = records()
     if len(left) != 1:
-        print(f"\nexpected 1 record, found {len(left)}:", file=sys.stderr)
+        print(f"\nexpected 1 row, found {len(left)}:", file=sys.stderr)
         for p in left:
             print(f"  {p}", file=sys.stderr)
         return 1
 
-    print(f"\n1 record left ({args.keep}). Quit Safari fully (Cmd-Q) to refresh it.")
-    if subprocess.run(["pgrep", "-qf", "Xcode.app/Contents/MacOS/Xcode"]).returncode == 0:
-        print("Xcode is open -- building another configuration brings its row back.")
+    print(f"\n1 row left ({origin(left[0], built)}). Quit Safari fully (Cmd-Q).")
+    print("The next signed build adds a row back -- rerun this afterwards.")
     return 0
 
 
