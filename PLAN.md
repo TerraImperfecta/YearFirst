@@ -85,6 +85,25 @@ push the difference into the manifest patch instead.
 
 ## Decisions that must not be silently reverted
 
+**Switching ON applies in place; switching OFF reloads.** Not symmetric, and
+deliberately so. The content script is already on the page, so turning the
+extension or a site back on only needs a rewrite -- `year-first:apply` asks
+for one. Turning OFF genuinely needs a reload: once a date has been swapped
+the original text is gone, and with both appearance options off there is not
+even an element left to carry it.
+
+Both directions used to reload, which is what the flash on toggling was. The
+popup asks rather than assuming: a page with no content script -- one open
+since before the extension was installed -- answers nothing, and the popup
+falls back to reloading rather than leaving the page unchanged. `applied` is
+false when the setting says stay off, for the same reason.
+
+Note this does NOT cover the flash on an ordinary page load, which is a
+different thing: `run_at` is `document_idle`, so a page paints its original
+dates and then reflows as they are rewritten. Moving to `document_end` would
+narrow that window. Not done -- it changes behaviour on every page, not just
+on a toggle, and wants measuring in a real browser first.
+
 **No lookbehind assertions.** The numeric patterns capture the character
 before the date as group 1 and hand it back untouched. This looks like it
 wants to be `(?<![\d\-/.])`. It did use that, and it was changed on purpose:

@@ -469,7 +469,31 @@
   // popup cannot work out which site it is looking at. It asks us instead --
   // we are already running on the page, so we know.
   api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg && msg.type === "year-first:host") sendResponse({ host: location.host });
+    if (!msg) return;
+
+    if (msg.type === "year-first:host") {
+      sendResponse({ host: location.host });
+      return;
+    }
+
+    // Turning the extension, or this site, back ON does not need a page
+    // reload: we are already running here and can rewrite in place. Only
+    // turning OFF does, because the original text is not recoverable once
+    // swapped. The popup asks rather than assuming, so that a page with no
+    // content script -- one loaded before the extension was installed --
+    // still falls back to a reload rather than silently doing nothing.
+    //
+    // Returning true keeps the message channel open across the async
+    // settings read.
+    if (msg.type === "year-first:apply") {
+      getSettings().then((s) => {
+        observer?.disconnect();
+        observer = null;
+        start({ ...DEFAULTS, ...s });
+        sendResponse({ applied: !!opts.enabled && !disabledHere(opts) });
+      }, () => sendResponse({ applied: false }));
+      return true;
+    }
   });
 
   // Re-scan when settings change. Dates already rewritten stay rewritten

@@ -32,16 +32,35 @@ function boot(html, settings = {}, { lang = "en-US", url = "https://example.com/
     { runScripts: "dangerously", url }
   );
   const { window } = dom;
+  let live = { ...settings };
+  // Captured so tests can drive the two listeners the script registers.
+  // These used to be absent, which threw a TypeError the moment the script
+  // reached runtime.onMessage -- silently, since jsdom reports it as an
+  // uncaught error rather than a failure. Everything below that line was
+  // therefore running untested.
+  const hooks = {};
+  window.addEventListener("error", (e) => { dom.bootError = e.error; });
   window.chrome = {
     storage: {
-      sync: { get: (defaults) => Promise.resolve({ ...defaults, ...settings }) },
-      onChanged: { addListener() {} },
+      sync: { get: (defaults) => Promise.resolve({ ...defaults, ...live }) },
+      onChanged: { addListener: (fn) => { hooks.changed = fn; } },
     },
+    runtime: { onMessage: { addListener: (fn) => { hooks.message = fn; } } },
   };
   const script = window.document.createElement("script");
   script.textContent = SOURCE;
   window.document.body.appendChild(script);
+  dom.hooks = hooks;
+  dom.setSettings = (next) => { live = next; };
   return dom;
+}
+
+/* Send a message the way the popup does, and resolve what it answers. */
+function send(dom, msg) {
+  return new Promise((resolve) => {
+    const kept = dom.hooks.message(msg, {}, resolve);
+    if (kept !== true) resolve(undefined);
+  });
 }
 
 /* Poll until `fn()` is truthy. The script defers work behind a 100ms timeout,
@@ -416,4 +435,59 @@ test("does nothing at all when disabled", async () => {
   const dom = boot("<p>Filed on January 5, 2024 today.</p>", { enabled: false });
   await new Promise((r) => dom.window.setTimeout(r, 300));
   assert.equal(textOf(dom, "p"), "Filed on January 5, 2024 today.");
+});
+
+/* ------------------------------------------------------------------ *
+ * Applying a settings change in place
+ *
+ * Turning the extension back on used to require a page reload, which was
+ * visible as the page flashing and then the dates changing under it. The
+ * content script is already here, so the popup asks it to apply instead.
+ * ------------------------------------------------------------------ */
+
+test("the script registers its listeners without throwing", async () => {
+  const dom = boot("<p>7 February 2024</p>");
+  await waitFor(dom.window, () => textOf(dom, "p") === "2024-02-07", { label: "rewrite" });
+  assert.equal(dom.bootError, undefined, String(dom.bootError?.message));
+  assert.equal(typeof dom.hooks.message, "function");
+  assert.equal(typeof dom.hooks.changed, "function");
+});
+
+test("still answers the host question", async () => {
+  const dom = boot("<p>hello</p>", {}, { url: "https://example.com:8443/x" });
+  assert.deepEqual(JSON.parse(JSON.stringify(await send(dom, { type: "year-first:host" }))),
+    { host: "example.com:8443" });
+});
+
+test("apply rewrites a page that was disabled, without a reload", async () => {
+  const dom = boot("<p>7 February 2024</p>", { enabled: false });
+  await new Promise((r) => dom.window.setTimeout(r, 150));
+  assert.equal(textOf(dom, "p"), "7 February 2024", "starts untouched");
+
+  dom.setSettings({ enabled: true });
+  const reply = await send(dom, { type: "year-first:apply" });
+  assert.deepEqual(JSON.parse(JSON.stringify(reply)), { applied: true });
+  await waitFor(dom.window, () => textOf(dom, "p") === "2024-02-07", { label: "rewrite after apply" });
+});
+
+test("apply reports false when the site is still switched off", async () => {
+  const dom = boot("<p>7 February 2024</p>", { disabledHosts: ["example.com"] });
+  await new Promise((r) => dom.window.setTimeout(r, 150));
+  const reply = await send(dom, { type: "year-first:apply" });
+  assert.equal(JSON.parse(JSON.stringify(reply)).applied, false,
+    "so the popup falls back to a reload rather than leaving the page unchanged");
+  assert.equal(textOf(dom, "p"), "7 February 2024");
+});
+
+test("apply reports false when the extension is off altogether", async () => {
+  const dom = boot("<p>7 February 2024</p>", { enabled: false });
+  await new Promise((r) => dom.window.setTimeout(r, 150));
+  const reply = await send(dom, { type: "year-first:apply" });
+  assert.equal(JSON.parse(JSON.stringify(reply)).applied, false);
+});
+
+test("an unknown message is ignored rather than answered", async () => {
+  const dom = boot("<p>hello</p>");
+  assert.equal(await send(dom, { type: "something-else" }), undefined);
+  assert.equal(await send(dom, null), undefined);
 });

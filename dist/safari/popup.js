@@ -19,6 +19,42 @@ function set(values) {
     : new Promise((resolve) => api.storage.sync.set(values, resolve));
 }
 
+// Turning something back ON is applied in place by the content script, which
+// is already running on the page -- no reload, so no flash of the page coming
+// back and no dates visibly rewriting themselves a moment later.
+//
+// Turning OFF still reloads. Once a date has been swapped, the original text
+// is gone, so there is nothing to put back without a fresh load.
+async function applyInPlace() {
+  let tab;
+  try {
+    [tab] = await api.tabs.query({ active: true, currentWindow: true });
+  } catch {
+    return false;
+  }
+  if (tab?.id == null) return false;
+  try {
+    const reply = await ask(tab.id, { type: "year-first:apply" });
+    return !!(reply && reply.applied);
+  } catch {
+    // No content script on this page -- it predates the install, or it is a
+    // page we are not injected into. A reload is the only way through.
+    return false;
+  }
+}
+
+// `turningOff` decides which of the two paths above applies. Either way the
+// popup closes once the page reflects the new setting, and falls back to
+// offering a manual reload if it could not be reached.
+async function settle(turningOff) {
+  if (!turningOff && await applyInPlace()) {
+    window.close();
+    return;
+  }
+  if (await reloadActiveTab()) window.close();
+  else el.reload.hidden = false;
+}
+
 async function reloadActiveTab() {
   try {
     const [tab] = await api.tabs.query({ active: true, currentWindow: true });
@@ -113,8 +149,8 @@ function paint(enabled) {
   paint(s.enabled);
 })();
 
-// Same reasoning as the master switch: dates already rewritten only revert on
-// a fresh load, so switching a site off reloads it straight away.
+// Switching a site OFF reloads it: rewritten dates only revert on a fresh
+// load. Switching it back on is applied in place -- see settle().
 el.siteOff.addEventListener("change", async () => {
   if (!host) return;
   const next = new Set(disabled);
@@ -122,19 +158,14 @@ el.siteOff.addEventListener("change", async () => {
   disabled = [...next];
   paint(el.enabled.checked);
   await set({ disabledHosts: disabled });
-  const reloaded = await reloadActiveTab();
-  if (reloaded) window.close();
-  else el.reload.hidden = false;
+  await settle(el.siteOff.checked);
 });
 
-// The master switch reloads straight away: dates already rewritten only
-// revert on a fresh load.
+// Same split as the per-site switch: off reloads, on applies in place.
 el.enabled.addEventListener("change", async () => {
   paint(el.enabled.checked);
   await set({ enabled: el.enabled.checked });
-  const reloaded = await reloadActiveTab();
-  if (reloaded) window.close();
-  else el.reload.hidden = false;
+  await settle(!el.enabled.checked);
 });
 
 // Appearance changes apply to dates found from now on, so offer the reload
