@@ -25,10 +25,15 @@ rewrite, the MutationObserver path works, the popup, options page, badge and
 settings persistence all behave. The only fixes Safari needed were to the
 manifest patch and the generated project, never to `src/`.
 
-No automated coverage of the DOM side on any browser -- the TreeWalker,
-MutationObserver and rewriting paths are still only verified by hand against
-`test/test.html`. `findDates` and the licensing of the builds are the parts
-under test.
+The DOM side is now covered too, by two harnesses that catch different
+things. `test/dom.test.js` drives the real content script inside jsdom and
+asserts on the resulting document -- black box, since content.js exports
+nothing. `test/test.html` checks itself in a real browser.
+
+They are not redundant. jsdom does not implement `isContentEditable`, so the
+contenteditable skip cannot be tested there at all -- an assertion would be
+testing jsdom rather than the extension. The browser page covers it. Run both
+before believing the DOM side works.
 
 Automated tests now cover the matching logic: 45 cases in
 `test/dates.test.js`, run with `node --test`, no dependencies. That closes
@@ -323,15 +328,32 @@ anchor them. Time-of-day normalisation; this is a date tool.
 
 ## Environment
 
-No npm dependencies and no bundler; keep it that way if possible. Python 3
-for `build.py`, plus Pillow only if regenerating icons. Node for tests.
+**The extension ships no dependencies and that is not negotiable.** `build.py`
+copies `src/` alone, so `dist/` and the store zips contain nothing but the
+extension. No bundler, no minification, nothing to audit.
+
+The test harness is the exception, and it is deliberate: jsdom is a
+devDependency, because the DOM side is untestable without a DOM and a
+hand-rolled shim would mean tests that validate the shim rather than the code.
+`npm ci` in CI, `node_modules/` gitignored, nothing reaching the built output.
+
+Python 3 for `build.py`, plus Pillow only if regenerating icons. Node 24+ for
+tests -- `node --test test/` fails on 24, so use `npm test`, which passes the
+files explicitly.
 
 ```
+npm ci                        # once, for the test harness
+npm test                      # 75 tests: dates, DOM, licensing
 python3 build.py              # all three targets into dist/
 python3 build.py chrome       # one target
 python3 build.py --zip        # store-ready zips
 cd test && python3 -m http.server 8000   # then open localhost:8000/test.html
 ```
+
+The test page checks itself: let it settle, then press **Check results**. It
+reports pass or fail per row and says why when a row fails. Press
+**Add three more dates** first to exercise the MutationObserver, then check
+again.
 
 Firefox and Safari do not run content scripts on `file://` URLs, which is
 why the test page has to be served.

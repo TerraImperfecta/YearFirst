@@ -14,11 +14,14 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
-      # Pass the files explicitly rather than the directory. `node --test test/`
-      # resolves a bare directory as a module entry point on some versions
-      # (it works on 20 and 26, and fails on 24), so the glob avoids relying
-      # on behaviour that has changed twice.
-      - run: node --test test/*.test.js
+          cache: 'npm'
+      # jsdom is a test-only dependency. The extension itself ships none --
+      # build.py copies src/ alone, so dist/ never sees node_modules.
+      - run: npm ci
+      # npm test passes the files explicitly rather than the directory.
+      # `node --test test/` resolves a bare directory as a module entry point
+      # on some versions (works on 20 and 26, fails on 24).
+      - run: npm test
 
   dist-in-sync:
     # dist/ is committed, and the README promises it is loadable without

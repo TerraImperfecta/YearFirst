@@ -1,0 +1,11 @@
+# Test harness only. The extension itself has no dependencies and build.py
+# copies src/ alone, so nothing here reaches dist/ or the store zips.
+node_modules/
+
+# Build output that is not the committed dist/
+dist/*.zip
+
+# macOS / Xcode
+.DS_Store
+*.xcuserstate
+xcuserdata/
