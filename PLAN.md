@@ -382,6 +382,29 @@ so the remaining ones are never ambiguous.
 `--bump-build` is deliberately not part of the default run: the other fixes
 restore a known state and are idempotent, this one changes state every time.
 
+**Name archives yourself.** Xcode's default is a timestamp, which is how two
+1.0.1 archives ended up indistinguishable in the first place. Pass
+`-archivePath` and use Apple's own `version (build)` form, so the filename
+says the same thing Organizer's version column does:
+
+```
+xcodebuild -project "Year First.xcodeproj" -scheme "Year First" \
+  -configuration Release archive \
+  -archivePath ~/Library/Developer/Xcode/Archives/<date>/"Year First 1.0.2 (2).xcarchive"
+```
+
+The existing archives were renamed to match. Renaming the bundle is safe:
+Organizer reads `Info.plist` inside it, and the app, its signature and the
+extension's manifest all survive -- checked, not assumed. It only affects
+what you see in Finder and the terminal, which is where the confusion was.
+
+Two traps if you go looking at them by hand. `ApplicationPath` in the
+archive's `Info.plist` is relative to `Products/`, not to the archive root,
+so joining it directly reports the app as missing. And Xcode's timestamp
+names contain U+202F before "PM" -- `find` prints something that looks like
+a normal space, and the literal path then fails with `FileNotFoundError`.
+Glob, do not retype.
+
 **Safari's Extensions pane reads PlugInKit, not LaunchServices.** This is
 the whole trap. `lsregister -dump` also lists every built copy of the app,
 which looks like the answer, and `lsregister -u` removes them -- and Safari's
