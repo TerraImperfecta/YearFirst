@@ -157,7 +157,29 @@ never gets mistaken for a spellcheck squiggle.
 
 ## License
 
-GPL-3.0-or-later. See `LICENSE`.
+Dual licensed, by distribution channel rather than by recipient choice:
 
-Note for the Safari target: GPLv3 and the Apple App Store are in conflict —
-see the licensing bullet in `PLAN.md` before submitting there.
+| build | licence |
+| --- | --- |
+| Firefox, Chrome, and this repository | GPL-3.0-or-later (`LICENSE`) |
+| Safari | MPL-2.0 (`LICENSE.MPL`) |
+
+`build.py` puts the right licence text in each `dist/<target>/` and tags the
+shipped sources to match. `test/licensing.test.js` asserts it, so a mismatch
+fails CI rather than surfacing at store review.
+
+Safari is the exception because it has to be. Apple's App Store terms impose
+usage restrictions on users that GPLv3 section 10 forbids adding downstream,
+so a GPLv3 build cannot lawfully be distributed there — this is what got VLC
+pulled from the App Store in 2011. MPL-2.0 is weak copyleft and carries no
+such conflict.
+
+Two consequences worth being clear about:
+
+- The Safari build is plain, readable JavaScript under MPL-2.0. Anyone may
+  take that copy and combine it with proprietary code, which MPL permits and
+  GPL would not. The GPL terms on the other builds do not prevent this.
+- **Contributions are accepted under both licences.** Opening a pull request
+  means agreeing your change may ship under GPL-3.0-or-later and under
+  MPL-2.0. Without that, a GPL-only contribution could not go in the Safari
+  build, and the two would drift apart.

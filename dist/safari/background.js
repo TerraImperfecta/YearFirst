@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 "use strict";
 
 const api = globalThis.browser ?? globalThis.chrome;

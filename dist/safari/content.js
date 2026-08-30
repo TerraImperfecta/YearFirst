@@ -1,7 +1,7 @@
 /* Year First — content script
  * Finds dates in page text and rewrites them as YYYY-MM-DD.
  *
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: MPL-2.0
  */
 (() => {
   "use strict";

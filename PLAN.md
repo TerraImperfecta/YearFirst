@@ -196,8 +196,8 @@ global `enabled` flag so the two don't fight.
 
 ### 4. Safari
 
-Read the licensing bullet under Release prep first — GPL-3.0 and the App
-Store are in conflict, and that is a decision, not paperwork.
+Licensing is settled: this target ships MPL-2.0, handled by `build.py`. No
+action needed beyond not undoing it.
 
 `xcrun safari-web-extension-converter dist/safari` on macOS with Xcode.
 Needs Safari → Settings → Advanced → show developer features, then
@@ -218,12 +218,14 @@ reliably if the iOS target is built — `--macos-only` avoids that for now.
   `STORE-NOTES.md`, along with the `<all_urls>` justification every store
   asks for. The answer is none, and it is verifiable from source: no network
   calls, no eval, no remote code, no identifiers.
-- **Open: GPL-3.0 conflicts with the Apple App Store.** Apple's terms impose
-  usage restrictions (device limits, DRM) that GPLv3 forbids adding
-  downstream; this is what got VLC pulled in 2011. Firefox and Chrome are
-  unaffected — this blocks the Safari target only. Resolve before task 4 by
-  relicensing (MPL-2.0 is weak copyleft and App Store compatible),
-  dual-licensing the Safari build, or accepting that Safari does not ship.
+- ~~GPL-3.0 conflicts with the Apple App Store.~~ RESOLVED — dual licensed
+  by channel. GPL-3.0-or-later for Firefox, Chrome and this repository;
+  MPL-2.0 for the Safari build only, because Apple's terms impose usage
+  restrictions that GPLv3 section 10 forbids adding downstream. `build.py`
+  ships the right text per target and retags the sources; a test asserts it.
+  Note the knock-on: the Safari build is readable JS under MPL, so anyone may
+  take that copy into a closed product. The GPL on the other builds does not
+  prevent that. Accepted deliberately, not overlooked.
 - Still to do: screenshots and listing copy for all three stores.
 - `python3 build.py --zip` produces the store uploads.
 - Costs: Firefox signing free (self-distribution allowed), Chrome $5 once,

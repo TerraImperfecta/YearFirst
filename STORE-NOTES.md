@@ -70,5 +70,9 @@ single unambiguous format. The `<all_urls>` justification above goes in the
 permissions-justification field.
 
 **Safari / App Store.** Ships inside a native app via
-`xcrun safari-web-extension-converter`. See the licensing note in PLAN.md
-before submitting — this is not purely a paperwork step.
+`xcrun safari-web-extension-converter`. This build is licensed **MPL-2.0**,
+not GPL-3.0 like the others — GPLv3 cannot lawfully be distributed through
+the App Store, since Apple's terms impose usage restrictions that GPLv3
+section 10 forbids adding. `build.py` handles this; `dist/safari/LICENSE` is
+the MPL text and the shipped sources are tagged to match. Do not "fix" the
+inconsistency with the other targets.
