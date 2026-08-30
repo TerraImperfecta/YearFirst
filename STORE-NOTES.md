@@ -97,16 +97,19 @@ Chrome allows 132 characters, AMO's summary allows 250. This fits both:
 
 ## Detailed description
 
+Two constraints on this text, both learned the annoying way. No angle
+brackets: store description fields strip or escape them, so `<time>` renders
+as nothing or as `&lt;time&gt;`. No aligned columns: the field renders in a
+variable-width font with no monospace option, so an ASCII table comes out
+ragged. Both are why the examples are prose.
+
     Every date on the page, in one format: 2024-01-05.
 
     Year First rewrites dates as it finds them, in the order that actually
     sorts — largest unit first. It reads the formats people really write:
-
-      January 5, 2024   ->  2024-01-05
-      5 Jan 2024        ->  2024-01-05
-      23/07/2024        ->  2024-07-23
-      2024/3/9          ->  2024-03-09
-      3/4/25            ->  2025-04-03
+    January 5, 2024 and 5 Jan 2024 both become 2024-01-05. 23/07/2024
+    becomes 2024-07-23, 2024/3/9 becomes 2024-03-09, and 3/4/25 becomes
+    2025-04-03.
 
     05/01/2024 is the hard one, because it means two different days
     depending on who wrote it. Year First looks for other dates on the same
@@ -115,7 +118,7 @@ Chrome allows 132 characters, AMO's summary allows 250. This fits both:
     page's own language setting. You can also just tell it: day first,
     month first, or work it out.
 
-    Timestamps marked up as <time> elements are read from the machine-
+    Timestamps marked up as time elements are read from their machine-
     readable attribute, so "three hours ago" becomes a real date.
 
     It is careful about what it does not touch. Code, preformatted text,
@@ -130,10 +133,10 @@ Chrome allows 132 characters, AMO's summary allows 250. This fits both:
     any kind. Your settings are stored by your browser and never leave it.
     The source is public and readable -- nothing is minified or bundled.
 
-    Options: how to read ambiguous numeric dates, whether to use <time>
-    attributes, whether to convert a bare month and year, whether to keep
-    the original text as a tooltip, and whether to underline what was
-    changed.
+    Options: how to read ambiguous numeric dates, whether to use time-
+    element attributes, whether to convert a bare month and year, whether
+    to keep the original text as a tooltip, and whether to underline what
+    was changed.
 
 ## Category
 
