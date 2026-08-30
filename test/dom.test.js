@@ -134,6 +134,56 @@ test("a rewritten time element keeps the original text as its tooltip", async ()
 });
 
 /* ------------------------------------------------------------------ *
+ * What a screen reader is told
+ * ------------------------------------------------------------------ */
+
+test("a rewritten date is announced as the text it replaced", async () => {
+  // YYYY-MM-DD is a scanning aid. Read aloud it is a run of digits, worse
+  // than the prose it replaced, so assistive technology gets the original.
+  const dom = boot("<p>Filed on January 5, 2024 today.</p>", { showOriginal: true });
+  const span = await waitFor(dom.window,
+    () => dom.window.document.querySelector("span.year-first-date"), { label: "span" });
+  assert.equal(span.textContent, "2024-01-05", "sighted readers see the rewrite");
+  assert.equal(span.getAttribute("aria-label"), "January 5, 2024",
+    "screen readers hear what was there before");
+});
+
+test("the label is set even when the tooltip is off", async () => {
+  // showOriginal is a visible tooltip. This is a different channel, and the
+  // accessibility case should not depend on a display preference.
+  const dom = boot("<p>Filed on January 5, 2024 today.</p>",
+    { showOriginal: false, highlight: true });
+  const span = await waitFor(dom.window,
+    () => dom.window.document.querySelector("span.year-first-date"), { label: "span" });
+  assert.equal(span.getAttribute("aria-label"), "January 5, 2024");
+  assert.equal(span.title, "", "no tooltip, as asked");
+});
+
+test("a rewritten time element carries the label on itself", async () => {
+  // <time> is rewritten in place rather than wrapped, so the label cannot go
+  // on a span -- there isn't one.
+  const dom = boot('<p>Posted <time datetime="2023-11-14">three years ago</time>.</p>',
+    { showOriginal: true });
+  await waitFor(dom.window, () => textOf(dom, "time") === "2023-11-14", { label: "rewrite" });
+  const time = dom.window.document.querySelector("time");
+  assert.equal(time.getAttribute("aria-label"), "three years ago",
+    "the listener hears the phrase the page used");
+});
+
+test("a date joined across markup is announced with its whole original", async () => {
+  const dom = boot("<p>on 1<span> </span>January 1970, more.</p>", { showOriginal: true });
+  const span = await waitFor(dom.window,
+    () => dom.window.document.querySelector("span.year-first-date"), { label: "span" });
+  assert.match(span.getAttribute("aria-label"), /^1\s+January 1970$/);
+});
+
+test("no label is invented for text that was not rewritten", async () => {
+  const dom = boot("<p>Version 2.5.1 and a ratio of 3/4.</p>", { showOriginal: true });
+  await new Promise((r) => dom.window.setTimeout(r, 300));
+  assert.equal(dom.window.document.querySelector("[aria-label]"), null);
+});
+
+/* ------------------------------------------------------------------ *
  * What must be left alone
  * ------------------------------------------------------------------ */
 
