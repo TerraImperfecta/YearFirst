@@ -53,6 +53,17 @@ TARGETS = {
             "gecko": {
                 "id": "year-first@immanuelqrw.dev",
                 "strict_min_version": "115.0",
+                # Required by AMO policy for all new extensions since
+                # 2025-11-03: an extension must state what it collects, and
+                # "none" is a statement. Firefox 140+ shows "doesn't collect
+                # any data" in the install prompt and in about:addons;
+                # older versions ignore the key.
+                #
+                # strict_min_version stays at 115 deliberately. The rule that
+                # forces 140 is the obligation to show a CUSTOM consent
+                # experience on older Firefox, and that only applies to
+                # extensions that actually collect or transmit something.
+                "data_collection_permissions": {"required": ["none"]},
             }
         },
     },

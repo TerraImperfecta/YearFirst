@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Year First",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Rewrites every date on a page to YYYY-MM-DD.",
   "permissions": [
     "storage",
@@ -47,7 +47,12 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "year-first@immanuelqrw.dev",
-      "strict_min_version": "115.0"
+      "strict_min_version": "115.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
     }
   }
 }

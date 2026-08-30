@@ -10,6 +10,22 @@ versions follow [Semantic Versioning][semver].
 
 Nothing yet.
 
+## [1.0.1] — 2026-08-30
+
+### Added
+
+- The Firefox build now declares that it collects no data, using the
+  `data_collection_permissions` key AMO requires of all new extensions from
+  2025-11-03. Firefox 140 and later show "doesn't collect any data" in the
+  install prompt and under Permissions and data in about:addons; older
+  versions ignore the key.
+
+`strict_min_version` stays at 115. The rule that would force 140 exists so
+that extensions which *do* collect data can show a custom consent screen on
+older Firefox, and this one collects nothing.
+
+No change to the Chrome or Safari builds beyond the version number.
+
 ## [1.0.0] — 2026-08-30
 
 First release. Tagged and built for all three browsers; not yet submitted to
