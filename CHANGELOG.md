@@ -8,6 +8,13 @@ versions follow [Semantic Versioning][semver].
 
 ## [Unreleased]
 
+### Changed
+
+- A rewritten date is now announced to screen readers as the text it
+  replaced. `YYYY-MM-DD` is a scanning aid; read aloud it is a run of digits
+  and dashes, which is worse than the prose it replaced. Sighted readers see
+  the rewrite, listeners hear the page as it was.
+
 ### Fixed
 
 - The per-site off switch was missing from the popup on Safari. Safari does

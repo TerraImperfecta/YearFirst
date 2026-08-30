@@ -221,6 +221,16 @@
         const span = document.createElement("span");
         span.className = "year-first-date";
         span.textContent = e.value;
+        // Announce what was replaced, not the rewrite. YYYY-MM-DD is a
+        // scanning aid; read aloud it is a run of digits and dashes, worse
+        // than the prose it replaced. So a screen reader hears the page as it
+        // was, and a sighted reader gets the rewrite.
+        //
+        // Not conditional on showOriginal: that setting is a visible tooltip,
+        // this is a different channel. aria-label also supersedes both the
+        // text and the title as the accessible name, which is what stops the
+        // date being announced twice.
+        if (e.raw) span.setAttribute("aria-label", e.raw);
         if (opts.showOriginal) span.title = e.raw;
         if (opts.highlight) styleSpan(span);
         frag.appendChild(span);
@@ -363,6 +373,9 @@
       if (!value) continue;
       const original = el.textContent.trim();
       if (!original || original === value) continue;
+      // Same reasoning as the span above. A <time> element is rewritten in
+      // place rather than wrapped, so the label goes on the element itself.
+      if (!el.getAttribute("aria-label")) el.setAttribute("aria-label", original);
       if (opts.showOriginal && !el.title) el.title = original;
       el.textContent = value;
       if (opts.highlight) styleSpan(el);
