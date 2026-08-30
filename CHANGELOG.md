@@ -8,7 +8,12 @@ versions follow [Semantic Versioning][semver].
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- The per-site off switch was missing from the popup on Safari. Safari does
+  not give the popup the tab's URL through `activeTab`, so the popup could
+  not tell which site it was looking at and hid the row. It now asks the
+  content script, which is already running on the page. No new permission.
 
 ## [1.0.1] — 2026-08-30
 

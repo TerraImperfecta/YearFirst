@@ -452,6 +452,13 @@
 
   getSettings().then((s) => start({ ...DEFAULTS, ...s })).catch(() => start(DEFAULTS));
 
+  // Safari does not expose tab.url to the popup through activeTab, so the
+  // popup cannot work out which site it is looking at. It asks us instead --
+  // we are already running on the page, so we know.
+  api.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg && msg.type === "year-first:host") sendResponse({ host: location.host });
+  });
+
   // Re-scan when settings change. Dates already rewritten stay rewritten
   // until the page is reloaded.
   api.storage.onChanged.addListener((changes, area) => {

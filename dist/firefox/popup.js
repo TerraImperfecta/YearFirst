@@ -35,12 +35,42 @@ async function reloadActiveTab() {
 //
 // Returns host: hostname plus port. That is exactly what the row displays and
 // exactly what content.js matches on.
-async function activeHost() {
+function hostOfUrl(value) {
   try {
-    const [tab] = await api.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.url) return null;
-    const url = new URL(tab.url);
+    const url = new URL(value);
     return url.protocol === "http:" || url.protocol === "https:" ? url.host : null;
+  } catch {
+    return null;
+  }
+}
+
+// Promise or callback, depending on the browser.
+function ask(tabId, message) {
+  const r = api.tabs.sendMessage(tabId, message);
+  if (r && typeof r.then === "function") return r;
+  return new Promise((resolve) => api.tabs.sendMessage(tabId, message, resolve));
+}
+
+async function activeHost() {
+  let tab;
+  try {
+    [tab] = await api.tabs.query({ active: true, currentWindow: true });
+  } catch {
+    return null;
+  }
+
+  // Chrome and Firefox hand us the URL directly.
+  const direct = tab?.url ? hostOfUrl(tab.url) : null;
+  if (direct) return direct;
+
+  // Safari does not, through activeTab. Ask the content script, which is
+  // already running on the page. No extra permission: if it is running there,
+  // we may talk to it.
+  if (tab?.id == null) return null;
+  try {
+    const reply = await ask(tab.id, { type: "year-first:host" });
+    const host = reply && reply.host;
+    return typeof host === "string" && host ? host : null;
   } catch {
     return null;
   }
