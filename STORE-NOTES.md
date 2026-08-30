@@ -140,7 +140,12 @@ ragged. Both are why the examples are prose.
 
 ## Category
 
-- Chrome Web Store: Productivity
+- Chrome Web Store: Functionality & UI (under the "Make Chrome Yours"
+  group, not Productivity). Chosen from what the categories actually
+  contain rather than from their names: Functionality & UI holds Just Read,
+  DocsAfterDark and SponsorBlock -- extensions that change how pages look
+  as you browse. Tools holds PDF converters, translators and dictionaries
+  -- capabilities you invoke. Year First is the former.
 - AMO: Appearance, or Other
 
 ## Screenshots
