@@ -223,6 +223,37 @@ for a release build, so the project stands alone.
 Generated outside the repo on purpose. An Xcode project is a large pile of
 files that should not be committed, and there is no .gitignore to catch it.
 
+**The generated project does not build as-is.** Xcode fails with:
+
+    Embedded binary's bundle identifier is not prefixed with the parent
+    app's bundle identifier.
+
+The converter derives the two identifiers from different inputs. The
+extension's comes from `--bundle-identifier`; the app's comes from
+`--app-name`, sanitised and appended to the bundle identifier's prefix. Pass
+an app name whose sanitised form differs in case from the last component of
+the bundle identifier -- "Year First" against `year-first` -- and they do not
+match:
+
+    app        dev.immanuelqrw.Year-First
+    extension  dev.immanuelqrw.year-first.Extension
+
+Fix by lowering the app's identifier to match, in
+`Year First.xcodeproj/project.pbxproj` (two occurrences of
+`PRODUCT_BUNDLE_IDENTIFIER`):
+
+    dev.immanuelqrw.Year-First  ->  dev.immanuelqrw.year-first
+
+Lower the app rather than raise the extension: `ViewController.swift`
+hardcodes the lowercase extension identifier, so lowering the app leaves that
+correct and touches nothing else. After the edit, `xcodebuild` reaches
+ValidateEmbeddedBinary and succeeds.
+
+This recurs on every regeneration, so redo the edit or pass
+`--bundle-identifier dev.immanuelqrw.Year-First` instead and accept the
+capitalised identifier. The lowercase one is more conventional and the
+identifier is permanent once shipped, which is why the edit is preferred.
+
 Converting emitted one warning, now fixed at the source rather than ignored:
 Safari does not support `options_ui.open_in_tab`, so `build.py` drops that key
 for the safari target only. It was `false`, which is Safari's only behaviour
