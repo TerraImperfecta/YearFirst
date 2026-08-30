@@ -22,8 +22,9 @@ const SCRIPT = readFileSync(join(SRC, "popup.js"), "utf8");
 
 /* `tab` is what tabs.query resolves to. `contentHost` is what the content
  * script answers when asked -- null means no answer, as on a page where it
- * is not running. */
-function boot({ tab = {}, contentHost = null, stored = {} } = {}) {
+ * is not running. `applied` is what it answers to year-first:apply; null
+ * means no answer, the same "no content script here" case. */
+function boot({ tab = {}, contentHost = null, stored = {}, applied = true } = {}) {
   const dom = new JSDOM(HTML, { runScripts: "dangerously", url: "https://extension/popup.html" });
   const { window } = dom;
   const calls = { set: [], sent: [], reloaded: 0 };
@@ -41,6 +42,9 @@ function boot({ tab = {}, contentHost = null, stored = {} } = {}) {
       reload: () => { calls.reloaded++; return Promise.resolve(); },
       sendMessage: (id, msg) => {
         calls.sent.push({ id, msg });
+        if (msg?.type === "year-first:apply") {
+          return Promise.resolve(applied === null ? undefined : { applied });
+        }
         return Promise.resolve(contentHost === null ? undefined : { host: contentHost });
       },
     },
@@ -141,4 +145,89 @@ test("unchecking removes only that host", async () => {
   box.dispatchEvent(new window.Event("change"));
   await settle();
   assert.deepEqual(JSON.parse(JSON.stringify(calls.set.at(-1))), { disabledHosts: ["other.example"] });
+});
+
+/* ------------------------------------------------------------------ *
+ * Switching back on, which does not need a reload
+ *
+ * The content script is already on the page and can rewrite in place. A
+ * reload here was visible as a flash of the page reloading, then the dates
+ * changing under it a moment later.
+ * ------------------------------------------------------------------ */
+
+const applyCalls = (calls) =>
+  calls.sent.filter((c) => c.msg?.type === "year-first:apply");
+
+test("turning a site back on applies in place instead of reloading", async () => {
+  const { window, calls } = boot({
+    tab: { id: 9 }, contentHost: "example.com",
+    stored: { disabledHosts: ["example.com"] },
+  });
+  await settle();
+  const box = window.document.getElementById("siteOff");
+  box.checked = false;
+  box.dispatchEvent(new window.Event("change"));
+  await settle();
+
+  assert.equal(applyCalls(calls).length, 1, "should ask the page to apply");
+  assert.equal(calls.reloaded, 0, "and not reload it");
+});
+
+test("turning a site off still reloads, since the original text is gone", async () => {
+  const { window, calls } = boot({ tab: { id: 9 }, contentHost: "example.com" });
+  await settle();
+  const box = window.document.getElementById("siteOff");
+  box.checked = true;
+  box.dispatchEvent(new window.Event("change"));
+  await settle();
+
+  assert.equal(applyCalls(calls).length, 0, "nothing to apply when switching off");
+  assert.equal(calls.reloaded, 1);
+});
+
+test("the master switch splits the same way", async () => {
+  const on = boot({ tab: { id: 9 }, contentHost: "example.com", stored: { enabled: false } });
+  await settle();
+  const onBox = on.window.document.getElementById("enabled");
+  onBox.checked = true;
+  onBox.dispatchEvent(new on.window.Event("change"));
+  await settle();
+  assert.equal(on.calls.reloaded, 0, "turning on applies in place");
+  assert.equal(applyCalls(on.calls).length, 1);
+
+  const off = boot({ tab: { id: 9 }, contentHost: "example.com" });
+  await settle();
+  const offBox = off.window.document.getElementById("enabled");
+  offBox.checked = false;
+  offBox.dispatchEvent(new off.window.Event("change"));
+  await settle();
+  assert.equal(off.calls.reloaded, 1, "turning off reloads");
+});
+
+test("falls back to reloading when the page has no content script", async () => {
+  const { window, calls } = boot({
+    tab: { id: 9 }, contentHost: "example.com", applied: null,
+    stored: { disabledHosts: ["example.com"] },
+  });
+  await settle();
+  const box = window.document.getElementById("siteOff");
+  box.checked = false;
+  box.dispatchEvent(new window.Event("change"));
+  await settle();
+
+  assert.equal(applyCalls(calls).length, 1, "it asks first");
+  assert.equal(calls.reloaded, 1, "then reloads because nothing answered");
+});
+
+test("falls back to reloading when the page answers that it did not apply", async () => {
+  const { window, calls } = boot({
+    tab: { id: 9 }, contentHost: "example.com", applied: false,
+    stored: { disabledHosts: ["example.com"] },
+  });
+  await settle();
+  const box = window.document.getElementById("siteOff");
+  box.checked = false;
+  box.dispatchEvent(new window.Event("change"));
+  await settle();
+  assert.equal(calls.reloaded, 1);
 });
