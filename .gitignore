@@ -5,6 +5,9 @@ node_modules/
 # Build output that is not the committed dist/
 dist/*.zip
 
+# JetBrains IDE config
+.idea/
+
 # macOS / Xcode
 .DS_Store
 *.xcuserstate

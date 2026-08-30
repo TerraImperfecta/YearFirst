@@ -190,8 +190,8 @@ ragged. Both are why the examples are prose.
 
     No accounts, no network requests, no analytics, no data collection of
     any kind. Your settings are stored by your browser and never leave it.
-    Nothing is minified or bundled: the code that runs is the code as
-    written, and you can read all of it in the extension's own folder.
+    The source is public and readable -- nothing minified, nothing
+    bundled -- so you can check every word of this yourself.
 
 ## Category
 
