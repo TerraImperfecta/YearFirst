@@ -344,13 +344,24 @@ as off while the extension is plainly working. Registrations outlive the
 bundles they point at, so clearing DerivedData does not help; it just leaves
 an entry with a blank icon.
 
+**Unregistering alone does not hold.** The .app copies stay in DerivedData,
+and LaunchServices re-registers one whenever it is rebuilt or relaunched, so
+the duplicates come back -- archiving Release and then hitting Run in Xcode
+(which builds Debug) is enough to get two entries again. Deleting the other
+configuration's product is what makes it stick, and it has to happen *after*
+unregistering, or the registration is orphaned rather than removed.
+
 ```
-python3 tools/clean-safari-registrations.py --check   # list
-python3 tools/clean-safari-registrations.py           # unregister all
+python3 tools/clean-safari-registrations.py --check          # list
+python3 tools/clean-safari-registrations.py                  # unregister all
+python3 tools/clean-safari-registrations.py --keep Release   # leave exactly one
 ```
 
-Then rebuild, which registers exactly one, and quit Safari fully -- it caches
-the list. Worth running after archiving, which is what adds the third.
+`--keep` unregisters everything, deletes every other configuration's product,
+then relaunches the kept app -- launching the container is the only way to
+register the .appex, since `lsregister -f` on it reports -10811 (not an
+application). Quit Safari fully afterwards; it caches the list. Worth running
+after archiving, which is what adds the third copy.
 
 **Run `tools/fix-safari-project.py` after generating or regenerating the
 project.** The three fixes below live only in the generated project, which is
