@@ -458,15 +458,30 @@ autocreates this project's scheme and there is no file on disk until someone
 edits it. That also makes it exactly the kind of state regenerating the
 project throws away, which is why it lives in this script.
 
-**Run `tools/fix-safari-project.py` after generating or regenerating the
-project.** The three fixes below live only in the generated project, which is
-not in version control, so regenerating loses all of them. The script applies
-all three and is idempotent:
+**Run `tools/fix-safari-project.py` before every archive.** Not only after
+regenerating the project -- before every single archive. The settings it
+manages live only in the generated project, which is not in version control,
+so there is nothing to diff against and nothing to review: drift is invisible
+until it ships.
+
+And it does drift, without anyone regenerating anything. Bumping to 1.0.2
+found `MACOSX_DEPLOYMENT_TARGET` back at 11.0, having been set to 13.3 and
+verified in a built binary earlier the same day, and the build post-action
+gone from the scheme. Xcode rewrites both of those on its own -- opening a
+scheme is enough for one, "update to recommended settings" for the other.
+Archiving at 11.0 would have shipped an app that installs on systems with no
+MV3 service worker, which is the failure the deployment target exists to
+prevent, and no build warning marks it.
 
 ```
 python3 tools/fix-safari-project.py --check   # report, change nothing
 python3 tools/fix-safari-project.py           # apply
 ```
+
+`--check` exits non-zero when anything needs fixing, so it is the one to run
+if this ever goes in CI. The five fixes below are all idempotent; `--bump-build`
+is deliberately excluded from both the default run and `--check`, because it
+changes state rather than restoring it.
 
 It reads the version from `manifest.base.json`, so bumping the version and
 re-running is all a release needs. It refuses to guess: an unexpected project
@@ -600,6 +615,9 @@ reliably if the iOS target is built — `--macos-only` avoids that for now.
   prevent that. Accepted deliberately, not overlooked.
 - Still to do: screenshots and listing copy for all three stores.
 - `python3 build.py --zip` produces the store uploads.
+- Run `python3 tools/fix-safari-project.py` before every Safari archive, not
+  just after regenerating the project. See the standing rule above: settings
+  drift back on their own and nothing warns you.
 - Costs: Firefox signing free (self-distribution allowed), Chrome $5 once,
   Safari $99/year plus shipping inside a native app.
 
