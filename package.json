@@ -1,0 +1,13 @@
+{
+  "name": "year-first",
+  "version": "1.0.0",
+  "description": "Test harness for the Year First browser extension. The extension itself ships no dependencies.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^27.0.0"
+  }
+}
