@@ -3,7 +3,7 @@
  * distributed through the App Store. Getting that wrong is silent and only
  * surfaces at review, so assert it on the built output.
  *
- *     node --test test/
+ *     node --test test/*.test.js
  */
 
 import test from "node:test";

@@ -10,11 +10,15 @@ jobs:
     name: Date logic
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: '20'
-      - run: node --test test/
+          node-version: '24'
+      # Pass the files explicitly rather than the directory. `node --test test/`
+      # resolves a bare directory as a module entry point on some versions
+      # (it works on 20 and 26, and fails on 24), so the glob avoids relying
+      # on behaviour that has changed twice.
+      - run: node --test test/*.test.js
 
   dist-in-sync:
     # dist/ is committed, and the README promises it is loadable without
@@ -23,8 +27,8 @@ jobs:
     name: dist/ matches a fresh build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       - run: python3 build.py

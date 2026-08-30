@@ -7,7 +7,7 @@
  * content.js moves the boundaries with it; if a marker disappears the tests
  * fail loudly rather than silently testing the wrong range.
  *
- *     node --test test/
+ *     node --test test/*.test.js
  */
 
 import test from "node:test";
