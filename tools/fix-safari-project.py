@@ -89,7 +89,54 @@ def fix_network_entitlement(text, report):
     return text
 
 
-FIXES = (fix_bundle_identifier, fix_marketing_version, fix_network_entitlement)
+def fix_deployment_target(text, report):
+    """The converter sets the project-level deployment target to whatever SDK
+    was current when it ran -- 26.5, in our case -- and the app target inherits
+    it. The app gates installation, so that refuses to install on anything
+    older, for an extension whose code runs far further back.
+
+    13.3 is the real floor: the manifest uses background.service_worker, which
+    is MV3, and Safari 16.4 is the first release to support it. Safari 16.4
+    ships with macOS 13.3. It is also the version the no-lookbehind convention
+    in content.js targets.
+    """
+    want = "13.3"
+    # Only the project-level values, which the app target inherits. The
+    # extension target sets its own (10.14) and is left alone.
+    found = sorted({v for v in re.findall(r"MACOSX_DEPLOYMENT_TARGET = ([^;]+);", text)})
+    stale = [v for v in found if v not in (want, "10.14")]
+    if not stale:
+        report("deployment target", f"already {want} (extension keeps 10.14)", False)
+        return text
+    for value in stale:
+        text = text.replace(f"MACOSX_DEPLOYMENT_TARGET = {value};",
+                            f"MACOSX_DEPLOYMENT_TARGET = {want};")
+    report("deployment target", f"{', '.join(stale)} -> {want}", True)
+    return text
+
+
+def fix_app_category(text, report):
+    """The Mac App Store requires a category. Without it the archive builds
+    with a warning and App Store Connect has nothing to file the app under."""
+    key = "INFOPLIST_KEY_LSApplicationCategoryType"
+    want = "public.app-category.utilities"
+    if key in text:
+        report("app category", "already set", False)
+        return text
+    # Add alongside the app target's other settings, identified by the setting
+    # the converter only puts on the app.
+    anchor = "ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;"
+    n = text.count(anchor)
+    if n == 0:
+        raise SystemExit("cannot locate the app target's build settings "
+                         "(run the network entitlement fix first)")
+    text = text.replace(anchor, f"{anchor}\n\t\t\t\t{key} = \"{want}\";")
+    report("app category", f"set to {want} ({n} config(s))", True)
+    return text
+
+
+FIXES = (fix_bundle_identifier, fix_marketing_version, fix_network_entitlement,
+         fix_deployment_target, fix_app_category)
 
 
 def main() -> int:

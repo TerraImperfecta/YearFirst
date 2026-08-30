@@ -296,6 +296,19 @@ It reads the version from `manifest.base.json`, so bumping the version and
 re-running is all a release needs. It refuses to guess: an unexpected project
 shape is an error, not a best effort.
 
+**The deployment target must be lowered.** The converter sets the
+project-level `MACOSX_DEPLOYMENT_TARGET` to whatever SDK was current when it
+ran -- 26.5 in our case -- and the app target inherits it, so the app refuses
+to install on anything older. 13.3 is the real floor: the manifest uses
+`background.service_worker`, which is MV3, Safari 16.4 is the first release
+to support it, and Safari 16.4 ships with macOS 13.3. That is also the
+version the no-lookbehind convention targets. The extension target sets its
+own 10.14 and is left alone.
+
+**The app needs a category.** `LSApplicationCategoryType` is unset after
+conversion, which the archive build warns about and which the Mac App Store
+requires. Set to `public.app-category.utilities`.
+
 **The network entitlement is removed on purpose.** The converter sets
 `ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES` on the app target, which grants
 `com.apple.security.network.client`. This extension makes no network requests
