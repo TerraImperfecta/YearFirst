@@ -3,7 +3,7 @@
 
 const api = globalThis.browser ?? globalThis.chrome;
 
-const DEFAULTS = { enabled: true, highlight: true, showOriginal: true, disabledOrigins: [] };
+const DEFAULTS = { enabled: true, highlight: true, showOriginal: true, disabledHosts: [] };
 
 function get() {
   const r = api.storage.sync.get(DEFAULTS);
@@ -30,14 +30,17 @@ async function reloadActiveTab() {
 }
 
 // activeTab gives us the URL of the tab the popup was opened over, so no
-// extra permission is needed. Only http(s) origins can be switched off --
-// there is nothing to rewrite on about: or the extension's own pages.
-async function activeOrigin() {
+// extra permission is needed. Only http(s) pages can be switched off -- there
+// is nothing to rewrite on about: or the extension's own pages.
+//
+// Returns host: hostname plus port. That is exactly what the row displays and
+// exactly what content.js matches on.
+async function activeHost() {
   try {
     const [tab] = await api.tabs.query({ active: true, currentWindow: true });
     if (!tab?.url) return null;
     const url = new URL(tab.url);
-    return url.protocol === "http:" || url.protocol === "https:" ? url.origin : null;
+    return url.protocol === "http:" || url.protocol === "https:" ? url.host : null;
   } catch {
     return null;
   }
@@ -54,14 +57,13 @@ const el = {
   siteHost: document.getElementById("siteHost")
 };
 
-let origin = null;
+let host = null;
 let disabled = [];
-const hostOf = (o) => { try { return new URL(o).host; } catch { return o; } };
 
 function paint(enabled) {
   document.body.classList.toggle("off", !enabled);
   if (!enabled) el.state.textContent = "Off — pages left alone";
-  else if (origin && disabled.includes(origin)) el.state.textContent = "Off on " + hostOf(origin);
+  else if (host && disabled.includes(host)) el.state.textContent = "Off on " + host;
   else el.state.textContent = "On for every site";
 }
 
@@ -70,12 +72,12 @@ function paint(enabled) {
   el.enabled.checked = s.enabled;
   el.highlight.checked = s.highlight;
   el.showOriginal.checked = s.showOriginal;
-  disabled = Array.isArray(s.disabledOrigins) ? s.disabledOrigins : [];
+  disabled = Array.isArray(s.disabledHosts) ? s.disabledHosts : [];
 
-  origin = await activeOrigin();
-  if (origin) {
-    el.siteHost.textContent = hostOf(origin);
-    el.siteOff.checked = disabled.includes(origin);
+  host = await activeHost();
+  if (host) {
+    el.siteHost.textContent = host;
+    el.siteOff.checked = disabled.includes(host);
     el.siteRow.hidden = false;
   }
   paint(s.enabled);
@@ -84,12 +86,12 @@ function paint(enabled) {
 // Same reasoning as the master switch: dates already rewritten only revert on
 // a fresh load, so switching a site off reloads it straight away.
 el.siteOff.addEventListener("change", async () => {
-  if (!origin) return;
+  if (!host) return;
   const next = new Set(disabled);
-  if (el.siteOff.checked) next.add(origin); else next.delete(origin);
+  if (el.siteOff.checked) next.add(host); else next.delete(host);
   disabled = [...next];
   paint(el.enabled.checked);
-  await set({ disabledOrigins: disabled });
+  await set({ disabledHosts: disabled });
   const reloaded = await reloadActiveTab();
   if (reloaded) window.close();
   else el.reload.hidden = false;

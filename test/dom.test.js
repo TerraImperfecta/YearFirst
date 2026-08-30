@@ -218,41 +218,54 @@ test("does not rewrite an already-rewritten date a second time", async () => {
  * Per-site off switch
  * ------------------------------------------------------------------ */
 
-test("does nothing on an origin the user has switched off", async () => {
-  const dom = boot("<p>Filed on January 5, 2024 today.</p>",
-    { disabledOrigins: ["https://example.com"] });
+const DATE_LINE = "<p>Filed on January 5, 2024 today.</p>";
+
+test("does nothing on a host the user has switched off", async () => {
+  const dom = boot(DATE_LINE, { disabledHosts: ["example.com"] });
   await new Promise((r) => dom.window.setTimeout(r, 300));
   assert.equal(textOf(dom, "p"), "Filed on January 5, 2024 today.");
 });
 
-test("still runs on an origin that is not on the list", async () => {
-  const dom = boot("<p>Filed on January 5, 2024 today.</p>",
-    { disabledOrigins: ["https://elsewhere.example"] });
+test("still runs on a host that is not on the list", async () => {
+  const dom = boot(DATE_LINE, { disabledHosts: ["elsewhere.example"] });
   await waitFor(dom.window, () => textOf(dom, "p").includes("2024-01-05"),
-    { label: "rewrite on an unlisted origin" });
+    { label: "rewrite on an unlisted host" });
 });
 
-test("matches on origin, not on hostname alone", async () => {
-  // http://example.com and https://example.com are different origins, and
-  // switching one off must not silently switch off the other.
-  const dom = boot("<p>Filed on January 5, 2024 today.</p>",
-    { disabledOrigins: ["http://example.com"] },
-    { url: "https://example.com/page" });
-  await waitFor(dom.window, () => textOf(dom, "p").includes("2024-01-05"),
-    { label: "rewrite despite a same-host different-scheme entry" });
+test("switching a site off covers both http and https", async () => {
+  // Nobody thinks of http://example.com and https://example.com as two sites,
+  // and the popup row says the host, so one entry has to cover both.
+  for (const url of ["http://example.com/page", "https://example.com/page"]) {
+    const dom = boot(DATE_LINE, { disabledHosts: ["example.com"] }, { url });
+    await new Promise((r) => dom.window.setTimeout(r, 300));
+    assert.equal(textOf(dom, "p"), "Filed on January 5, 2024 today.",
+      `${url} should be covered by the single host entry`);
+  }
 });
 
-test("a disabled origin does not stop other sites, and does not touch the master switch", async () => {
-  const dom = boot("<p>Filed on January 5, 2024 today.</p>",
-    { enabled: true, disabledOrigins: ["https://example.com"] });
+test("ports stay separate: localhost:3000 is not localhost:8000", async () => {
+  // The reason this matches host rather than bare hostname. A dev server and
+  // a test page on the same machine really are different sites.
+  const off = boot(DATE_LINE, { disabledHosts: ["localhost:3000"] },
+    { url: "http://localhost:3000/page" });
+  await new Promise((r) => off.window.setTimeout(r, 300));
+  assert.equal(textOf(off, "p"), "Filed on January 5, 2024 today.", "the listed port is off");
+
+  const on = boot(DATE_LINE, { disabledHosts: ["localhost:3000"] },
+    { url: "http://localhost:8000/page" });
+  await waitFor(on.window, () => textOf(on, "p").includes("2024-01-05"),
+    { label: "a different port to be unaffected" });
+});
+
+test("a disabled host does not stop other sites, and does not touch the master switch", async () => {
+  const dom = boot(DATE_LINE, { enabled: true, disabledHosts: ["example.com"] });
   await new Promise((r) => dom.window.setTimeout(r, 300));
-  assert.equal(textOf(dom, "p"), "Filed on January 5, 2024 today.", "this origin is off");
+  assert.equal(textOf(dom, "p"), "Filed on January 5, 2024 today.", "this host is off");
 
-  const other = boot("<p>Filed on January 5, 2024 today.</p>",
-    { enabled: true, disabledOrigins: ["https://example.com"] },
+  const other = boot(DATE_LINE, { enabled: true, disabledHosts: ["example.com"] },
     { url: "https://other.example/page" });
   await waitFor(other.window, () => textOf(other, "p").includes("2024-01-05"),
-    { label: "a different origin to be unaffected" });
+    { label: "a different host to be unaffected" });
 });
 
 /* ------------------------------------------------------------------ *

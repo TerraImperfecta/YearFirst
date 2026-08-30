@@ -35,8 +35,9 @@ First release. Not yet submitted to any store.
   underline on rewritten dates (on).
 - `data-no-year-first` attribute to skip any element's subtree.
 - Per-site off switch in the toolbar popup, for sites where the original date
-  string matters. Matches on origin, so http and https are separate, and is
-  independent of the global on/off switch.
+  string matters. Remembered per host, so one entry covers a site over both
+  http and https while different ports stay separate. Independent of the
+  global on/off switch.
 - Dual licensing by distribution channel: GPL-3.0-or-later for the Firefox
   and Chrome builds, MPL-2.0 for the Safari build, which cannot ship GPLv3
   through the App Store.
