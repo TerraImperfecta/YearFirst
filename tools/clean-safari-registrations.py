@@ -54,6 +54,7 @@ INSTALLED = f"/Applications/{APP}"
 LSREGISTER = ("/System/Library/Frameworks/CoreServices.framework/Versions/A"
               "/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister")
 DERIVED = os.path.expanduser("~/Library/Developer/Xcode/DerivedData/Year_First-*")
+ARCHIVES = os.path.expanduser("~/Library/Developer/Xcode/Archives")
 PK_PATH_RE = re.compile(r"^\s*Path\s*=\s*(/.*\.appex)\s*$")
 LS_PATH_RE = re.compile(r"^\s*path:\s*(/.*?)(?:\s*\(0x[0-9a-f]+\))?\s*$")
 
@@ -91,12 +92,31 @@ def build_products():
     return out
 
 
+def under(path, parent):
+    return path == parent or path.startswith(parent + os.sep)
+
+
 def origin(path, built):
-    if path.startswith(INSTALLED + os.sep) or path == INSTALLED:
+    """Where a registered copy came from, as a short label.
+
+    Archiving registers a third copy -- the archive's own -- which used to
+    come out as "unknown", saying nothing about what had just been removed.
+    Naming the archive makes the post-action's line during an archive read as
+    the expected thing rather than as something going wrong.
+    """
+    if under(path, INSTALLED):
         return "installed"
     for config, app in built.items():
-        if path.startswith(app + os.sep):
+        if under(path, app):
             return f"build:{config}"
+    if under(path, ARCHIVES):
+        # .../Archives/2026-08-30/Year First 1.0.2 (2).xcarchive/Products/...
+        rest = path[len(ARCHIVES) + 1:].split(os.sep)
+        name = next((p for p in rest if p.endswith(".xcarchive")), None)
+        return f"archive:{name[:-len('.xcarchive')]}" if name else "archive"
+    if any(under(path, os.path.dirname(root)) for root in glob.glob(DERIVED)):
+        # Index.noindex and other build trees Xcode keeps outside Products.
+        return "build:other"
     return "unknown"
 
 
