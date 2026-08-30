@@ -17,12 +17,18 @@ path for content added after load, the toolbar popup, the options page, the
 icon set, and the three-target build. Firefox is the only browser it has
 actually been loaded in.
 
-The Chrome build is now verified: loaded unpacked, service worker starts
-clean, dates rewrite, the MutationObserver path works, the "off" badge
-appears and settings persist. No changes were needed to make it work.
+All three builds are now verified by hand.
 
-Not verified at all: Safari, which has never been through
-`safari-web-extension-converter`.
+Firefox was the development target throughout. Chrome was loaded unpacked and
+needed no changes. Safari was converted, built in Xcode and run: dates
+rewrite, the MutationObserver path works, the popup, options page, badge and
+settings persistence all behave. The only fixes Safari needed were to the
+manifest patch and the generated project, never to `src/`.
+
+No automated coverage of the DOM side on any browser -- the TreeWalker,
+MutationObserver and rewriting paths are still only verified by hand against
+`test/test.html`. `findDates` and the licensing of the builds are the parts
+under test.
 
 Automated tests now cover the matching logic: 45 cases in
 `test/dates.test.js`, run with `node --test`, no dependencies. That closes
@@ -199,12 +205,83 @@ behaves. The popup already has `activeTab`, so the origin is available from
 `tabs.query` without new permissions. Keep the storage key separate from the
 global `enabled` flag so the two don't fight.
 
-### 4. Safari
+### 4. Safari — DONE (built and run; not yet distributed)
 
 Licensing is settled: this target ships MPL-2.0, handled by `build.py`. No
 action needed beyond not undoing it.
 
-`xcrun safari-web-extension-converter dist/safari` on macOS with Xcode.
+The conversion runs clean. The exact invocation, which is worth reusing:
+
+```
+xcrun safari-web-extension-converter dist/safari \
+  --macos-only \
+  --project-location ~/Developer/YearFirst-Safari \
+  --app-name "Year First" \
+  --bundle-identifier dev.immanuelqrw.year-first \
+  --swift --no-open --no-prompt
+```
+
+`--copy-resources` is deliberately omitted, so the project REFERENCES
+`dist/safari/` rather than copying it — `python3 build.py safari` then updates
+what the app loads, without regenerating the project. Add `--copy-resources`
+for a release build, so the project stands alone.
+
+Generated outside the repo on purpose. An Xcode project is a large pile of
+files that should not be committed, and there is no .gitignore to catch it.
+
+**The generated project does not build as-is.** Xcode fails with:
+
+    Embedded binary's bundle identifier is not prefixed with the parent
+    app's bundle identifier.
+
+The converter derives the two identifiers from different inputs. The
+extension's comes from `--bundle-identifier`; the app's comes from
+`--app-name`, sanitised and appended to the bundle identifier's prefix. Pass
+an app name whose sanitised form differs in case from the last component of
+the bundle identifier -- "Year First" against `year-first` -- and they do not
+match:
+
+    app        dev.immanuelqrw.Year-First
+    extension  dev.immanuelqrw.year-first.Extension
+
+Fix by lowering the app's identifier to match, in
+`Year First.xcodeproj/project.pbxproj` (two occurrences of
+`PRODUCT_BUNDLE_IDENTIFIER`):
+
+    dev.immanuelqrw.Year-First  ->  dev.immanuelqrw.year-first
+
+Lower the app rather than raise the extension: `ViewController.swift`
+hardcodes the lowercase extension identifier, so lowering the app leaves that
+correct and touches nothing else. After the edit, `xcodebuild` reaches
+ValidateEmbeddedBinary and succeeds.
+
+This recurs on every regeneration, so redo the edit or pass
+`--bundle-identifier dev.immanuelqrw.Year-First` instead and accept the
+capitalised identifier. The lowercase one is more conventional and the
+identifier is permanent once shipped, which is why the edit is preferred.
+
+Converting emitted one warning, now fixed at the source rather than ignored:
+Safari does not support `options_ui.open_in_tab`, so `build.py` drops that key
+for the safari target only. It was `false`, which is Safari's only behaviour
+anyway, so nothing changed but the warning.
+
+Verified working: built in Xcode, enabled through
+Develop → Allow Unsigned Extensions, and run against `test/test.html` served
+over http. Dates rewrite, the MutationObserver path works, and the popup,
+options page, badge and settings persistence all behave.
+
+Both things this plan flagged as uncertain turned out fine. `setBadgeText`
+does work on Safari -- the try/catch around it stays anyway, since it costs
+nothing and the popup showing true state is the real guarantee. The options
+page behaves despite Safari surfacing it through the app rather than inline.
+
+To run it again after a Safari restart, redo Develop → Allow Unsigned
+Extensions; that setting does not persist.
+
+Distribution is a separate job: Apple Developer Program at $99/year, code
+signing, and an App Store Connect record. Note that is an APP listing, not an
+extension listing — it needs its own screenshots and description, distinct
+from the copy in STORE-NOTES.md.
 Needs Safari → Settings → Advanced → show developer features, then
 Develop → Allow Unsigned Extensions, which resets on every Safari restart.
 Two things to check rather than assume: whether `action.setBadgeText` does
