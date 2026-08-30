@@ -1,7 +1,8 @@
 # Store submission notes
 
-Copy for the review forms, kept here so the three submissions say the same
-thing. Nothing in this file ships in the extension.
+Everything needed to submit: the public listing copy, and the answers to the
+review questions. Kept here so the three submissions say the same thing.
+Nothing in this file ships in the extension.
 
 ## Permissions, and why each is needed
 
@@ -76,3 +77,101 @@ the App Store, since Apple's terms impose usage restrictions that GPLv3
 section 10 forbids adding. `build.py` handles this; `dist/safari/LICENSE` is
 the MPL text and the shipped sources are tagged to match. Do not "fix" the
 inconsistency with the other targets.
+
+---
+
+# Listing copy
+
+Draft. Written to be pasted, then edited — the voice should be yours.
+
+## Name
+
+    Year First
+
+## Short description
+
+Chrome allows 132 characters, AMO's summary allows 250. This fits both:
+
+    Rewrites every date on a page to YYYY-MM-DD, so 05/01 stops being an
+    argument.
+
+## Detailed description
+
+Two constraints on this text, both learned the annoying way. No angle
+brackets: store description fields strip or escape them, so `<time>` renders
+as nothing or as `&lt;time&gt;`. No aligned columns: the field renders in a
+variable-width font with no monospace option, so an ASCII table comes out
+ragged. Both are why the examples are prose.
+
+    Every date on the page, in one format: 2024-01-05.
+
+    Year First rewrites dates as it finds them, in the order that actually
+    sorts — largest unit first. It reads the formats people really write:
+    January 5, 2024 and 5 Jan 2024 both become 2024-01-05. 23/07/2024
+    becomes 2024-07-23, 2024/3/9 becomes 2024-03-09, and 3/4/25 becomes
+    2025-04-03.
+
+    05/01/2024 is the hard one, because it means two different days
+    depending on who wrote it. Year First looks for other dates on the same
+    page that can only be read one way -- anything with a part above 12 --
+    and lets those decide. If the page gives no clue, it falls back to the
+    page's own language setting. You can also just tell it: day first,
+    month first, or work it out.
+
+    Timestamps marked up as time elements are read from their machine-
+    readable attribute, so "three hours ago" becomes a real date.
+
+    It is careful about what it does not touch. Code, preformatted text,
+    input fields and anything you are editing are left alone. Version
+    numbers like 1.2.3 survive. So do fractions, year ranges, and dates
+    that do not exist, like 31/02/2024. Add data-no-year-first to any
+    element to skip it and everything inside it.
+
+    Dates that appear after the page loads get rewritten too.
+
+    No accounts, no network requests, no analytics, no data collection of
+    any kind. Your settings are stored by your browser and never leave it.
+    The source is public and readable -- nothing is minified or bundled.
+
+    Options: how to read ambiguous numeric dates, whether to use time-
+    element attributes, whether to convert a bare month and year, whether
+    to keep the original text as a tooltip, and whether to underline what
+    was changed.
+
+## Category
+
+- Chrome Web Store: Productivity
+- AMO: Appearance, or Other
+
+## Screenshots
+
+Chrome takes 1280x800 or 640x400, up to five. AMO is flexible. The same five
+work for both, and the order matters -- the first is the only one many people
+see.
+
+1. **Before and after on a real page.** The whole pitch in one image. Pick a
+   page with several date formats visible at once -- a news index or a
+   changelog. Split or stack the two states.
+2. **The toolbar popup**, open, showing the on/off switch and the toggles.
+   Proves it is controllable at a glance.
+3. **The options page**, showing the "Reading 05/01/2024" control with its
+   live preview. This is the feature that distinguishes it from the several
+   other date extensions; give it a whole shot.
+4. **The ambiguous case resolved** -- a page where automatic detection got
+   05/01 right, ideally with the unambiguous date that voted for it visible
+   in the same frame.
+5. **The "should not change" section of test/test.html**, showing version
+   numbers and fractions untouched. Restraint is a feature, and it answers
+   the reviewer's unasked question about false positives.
+
+Small promo tile for Chrome is 440x280: the icon on the tile amber (#B8730E)
+with the wordmark, or a single before/after pair large enough to read.
+
+## Before submitting
+
+- [ ] Screenshots taken and cropped to size
+- [ ] Listing copy edited into your own voice
+- [ ] `python3 build.py --zip` run, or a `v*` tag pushed to let CI build them
+- [ ] Chrome: permissions justification pasted from the section above
+- [ ] AMO: check current policy on the manifest data collection key
+- [ ] Safari: confirm the build carries the MPL licence, not the GPL one
