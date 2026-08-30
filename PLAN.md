@@ -282,6 +282,14 @@ for a release build, so the project stands alone.
 Generated outside the repo on purpose. An Xcode project is a large pile of
 files that should not be committed, and there is no .gitignore to catch it.
 
+**The network entitlement is removed on purpose.** The converter sets
+`ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES` on the app target, which grants
+`com.apple.security.network.client`. This extension makes no network requests
+-- that is the central privacy claim, stated in the listing, the privacy
+policy and the store declarations -- so an entitlement advertising network
+access contradicts it. Both app configurations are set to NO. The extension
+target never had it.
+
 **The Xcode project carries its own version and does not follow the
 manifest.** The project references `dist/safari/`, so the extension content
 updates when you rebuild -- but `MARKETING_VERSION` in `project.pbxproj` is
