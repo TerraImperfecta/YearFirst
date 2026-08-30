@@ -77,15 +77,25 @@ def fix_marketing_version(text, report):
 
 
 def fix_network_entitlement(text, report):
-    """The converter grants com.apple.security.network.client to the app. This
-    extension makes no network requests, and every other artefact says so."""
-    n = text.count("ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;")
+    """Keep com.apple.security.network.client ON, and do not "tidy" it away.
+
+    It looks removable: the extension makes no network requests, and every
+    other artefact says so. It is not removable. The wrapper app hosts a
+    WKWebView, and a sandboxed app embedding WKWebView needs this entitlement
+    for WebKit's own content process even when the page is a local file:// URL
+    from the bundle. Without it the app launches, the window opens, and the
+    web view renders nothing -- no crash, no error, just blank.
+
+    This function exists to put it back, because removing it is the obvious
+    wrong move and was made once already.
+    """
+    n = text.count("ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;")
     if n == 0:
-        report("network entitlement", "already off", False)
+        report("network entitlement", "on (required by WKWebView)", False)
         return text
-    text = text.replace("ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;",
-                        "ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;")
-    report("network entitlement", f"{n} occurrence(s) YES -> NO", True)
+    text = text.replace("ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;",
+                        "ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;")
+    report("network entitlement", f"{n} occurrence(s) NO -> YES (WKWebView needs it)", True)
     return text
 
 
