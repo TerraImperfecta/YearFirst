@@ -258,7 +258,7 @@ behaves. The popup already has `activeTab`, so the origin is available from
 `tabs.query` without new permissions. Keep the storage key separate from the
 global `enabled` flag so the two don't fight.
 
-### 3b. Announce the original date to screen readers — BUILT, NOT HEARD
+### 3b. Announce the original date to screen readers — DONE
 
 Rewriting dates is neutral-to-negative for anyone listening rather than
 reading. VoiceOver reads "January 5, 2024" naturally and "2024-01-05" as a run
@@ -273,11 +273,12 @@ because the rewrite is a scanning aid and reading digits aloud is a
 regression. It is set regardless of `showOriginal`, because that setting is a
 visible tooltip and this is a different channel.
 
-The third question is still open and cannot be closed from here: whether
-`aria-label` suppresses the double announcement or adds to it. It should
-supersede both the text and the `title` as the accessible name, but VoiceOver
-and NVDA differ and the tests can only prove the attribute is set, not that
-it is announced well. **Listen before closing issue #29.**
+The third was settled by listening, which was the only way it could be.
+VoiceOver announces the original once -- so `aria-label` does supersede both
+the element's text and its `title` as the accessible name, and the
+double-announcement worry does not survive contact with a real screen reader.
+Not verified on NVDA; Windows is not a target, but the assumption is recorded
+rather than generalised.
 
 One gap worth knowing: when both appearance options are off, the text is
 swapped in place with no element created -- deliberately, so framework DOM is
