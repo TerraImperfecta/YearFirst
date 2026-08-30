@@ -335,33 +335,43 @@ so the remaining ones are never ambiguous.
 `--bump-build` is deliberately not part of the default run: the other fixes
 restore a known state and are idempotent, this one changes state every time.
 
-**Safari shows one extension per registered copy of the app.** Every
-`xcodebuild` run ends with RegisterWithLaunchServices, and Debug, Release and
-the archive's intermediate copy are three different paths -- so the Extensions
-pane fills with identical "Year First" entries. The copy you tick is not
-necessarily the copy you are running, and the app then reports its extension
-as off while the extension is plainly working. Registrations outlive the
-bundles they point at, so clearing DerivedData does not help; it just leaves
-an entry with a blank icon.
-
-**Unregistering alone does not hold.** The .app copies stay in DerivedData,
-and LaunchServices re-registers one whenever it is rebuilt or relaunched, so
-the duplicates come back -- archiving Release and then hitting Run in Xcode
-(which builds Debug) is enough to get two entries again. Deleting the other
-configuration's product is what makes it stick, and it has to happen *after*
-unregistering, or the registration is orphaned rather than removed.
+**Safari's Extensions pane reads PlugInKit, not LaunchServices.** This is
+the whole trap. `lsregister -dump` lists every built copy of the app, which
+looks like the answer, and `lsregister -u` removes them -- and Safari's list
+does not change, because Safari never consulted it. PlugInKit keeps separate
+records, one per .appex path, and shows one row per record. Debug and Release
+are two rows with the same name and the same icon, and the one you tick is
+not necessarily the one that is running; the app then reports its extension
+as off while the extension is plainly working.
 
 ```
-python3 tools/clean-safari-registrations.py --check          # list
-python3 tools/clean-safari-registrations.py                  # unregister all
+pluginkit -m -A -D -i dev.immanuelqrw.year-first.Extension -vvv
+```
+
+is the ground truth. `pluginkit -r <path to .appex>` removes a record.
+
+**Only a signed build registers.** A build re-registers its .appex with
+PlugInKit as it finishes, so duplicates come back whenever Xcode builds a
+configuration you had cleaned up -- but `CODE_SIGNING_ALLOWED=NO` builds do
+not register at all. That is worth knowing before trying to reproduce this:
+an unsigned test build produces the product on disk and no new row, which
+looks like the bug fixing itself.
+
+Removing the record is half of it. The .appex has to come off disk too, or
+the next build of that configuration puts the row straight back. If Xcode is
+open on the project, expect Debug to return the next time you build.
+
+```
+python3 tools/clean-safari-registrations.py --check          # what Safari sees
 python3 tools/clean-safari-registrations.py --keep Release   # leave exactly one
 ```
 
-`--keep` unregisters everything, deletes every other configuration's product,
-then relaunches the kept app -- launching the container is the only way to
-register the .appex, since `lsregister -f` on it reports -10811 (not an
-application). Quit Safari fully afterwards; it caches the list. Worth running
-after archiving, which is what adds the third copy.
+`--keep` removes the other configurations' PlugInKit records, then deletes
+their build products -- in that order, since removing the product first
+leaves a stale record pointing at nothing, which Safari still renders. It
+also clears the matching LaunchServices entries, which do not affect Safari
+but are why the app shows up repeatedly in Spotlight. Quit Safari fully
+afterwards (Cmd-Q); it caches the list.
 
 **Run `tools/fix-safari-project.py` after generating or regenerating the
 project.** The three fixes below live only in the generated project, which is
