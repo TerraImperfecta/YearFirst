@@ -9,18 +9,30 @@ registered copy, so the Extensions pane fills up with identical entries, and
 the copy you tick is not necessarily the copy you are running. The app then
 reports its extension as off while the extension is plainly working.
 
-Registrations outlive the bundles they point at, so deleting DerivedData does
-not clear them -- that just leaves an entry with a blank icon.
+Unregistering alone is not durable. The .app copies stay in DerivedData, and
+LaunchServices re-registers a copy whenever it is rebuilt or relaunched, so
+the duplicates come back -- building Release and then hitting Run in Xcode
+(which builds Debug) is enough to get two entries again. To leave exactly one
+entry for good, the other configuration's product has to come off disk.
 
-    python3 tools/clean-safari-registrations.py --check   # list, change nothing
-    python3 tools/clean-safari-registrations.py           # unregister all
+Registrations also outlive the bundles they point at, so deleting DerivedData
+without unregistering does not clear the list -- that just leaves an entry
+with a blank icon. Do both, in that order, which is what --keep does.
 
-Unregistering all is the right move: the next build re-registers exactly one.
-Quit Safari fully afterwards, it caches the list.
+    python3 tools/clean-safari-registrations.py --check     # list, change nothing
+    python3 tools/clean-safari-registrations.py             # unregister all
+    python3 tools/clean-safari-registrations.py --keep Release
+                          # unregister all, delete every other configuration's
+                          # product, relaunch the kept app so one entry returns
+
+Quit Safari fully afterwards (Cmd-Q), it caches the list.
 """
 
 import argparse
+import glob
+import os
 import re
+import shutil
 import subprocess
 import sys
 
@@ -28,6 +40,8 @@ LSREGISTER = ("/System/Library/Frameworks/CoreServices.framework/Versions/A"
               "/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister")
 APP = "Year First.app"
 PATH_RE = re.compile(r"^\s*path:\s*(/.*?)(?:\s*\(0x[0-9a-f]+\))?\s*$")
+PRODUCTS = os.path.expanduser(
+    "~/Library/Developer/Xcode/DerivedData/Year_First-*/Build/Products")
 
 
 def registered():
@@ -46,25 +60,53 @@ def registered():
     return sorted(set(out))
 
 
+def products():
+    """Built .app copies on disk, as {configuration: path}."""
+    out = {}
+    for root in glob.glob(PRODUCTS):
+        for config in sorted(os.listdir(root)):
+            app = os.path.join(root, config, APP)
+            if os.path.exists(app):
+                out[config] = app
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--check", action="store_true",
                     help="list registrations and exit non-zero if there are any")
+    ap.add_argument("--keep", metavar="CONFIG",
+                    help="configuration to keep (e.g. Release): every other "
+                         "configuration's build product is deleted so it cannot "
+                         "re-register, then the kept app is relaunched")
     args = ap.parse_args()
 
+    built = products()
     paths = registered()
-    if not paths:
-        print("no registrations -- Safari should show one entry after the next build")
-        return 0
 
-    apps = [p for p in paths if p.endswith(APP)]
-    print(f"{len(apps)} app registration(s), {len(paths) - len(apps)} extension:")
-    for p in paths:
-        print(f"  {'(missing) ' if not __import__('os').path.exists(p) else ''}{p}")
+    if paths:
+        apps = [p for p in paths if p.endswith(APP)]
+        print(f"{len(apps)} app registration(s), {len(paths) - len(apps)} extension:")
+        for p in paths:
+            print(f"  {'(missing) ' if not os.path.exists(p) else ''}{p}")
+    else:
+        print("no registrations")
+
+    if built:
+        print(f"\n{len(built)} build product(s) on disk:")
+        for config, app in built.items():
+            print(f"  {config}: {app}")
 
     if args.check:
-        print("\n--check: run without it to unregister these")
+        stale = len(built) > 1 or len(paths) > 2
+        print("\n--check: " + ("more than one copy -- run without --check"
+                               if stale else "one copy, nothing to do"))
+        return 1 if stale else 0
+
+    if args.keep and args.keep not in built:
+        print(f"\nno {args.keep} product built -- have {sorted(built) or 'none'}",
+              file=sys.stderr)
         return 1
 
     for p in paths:
@@ -75,7 +117,22 @@ def main() -> int:
         for p in left:
             print(f"  {p}", file=sys.stderr)
         return 1
-    print("\nall unregistered. Rebuild to register one, then quit Safari fully (Cmd-Q).")
+
+    if not args.keep:
+        print("\nall unregistered. Rebuild to register one, then quit Safari (Cmd-Q).")
+        print("Duplicates return on the next build of another configuration; "
+              "use --keep to delete those products too.")
+        return 0
+
+    for config, app in built.items():
+        if config != args.keep:
+            shutil.rmtree(os.path.dirname(app))
+            print(f"\ndeleted {config} product")
+
+    # The .appex cannot be registered on its own (lsregister -f reports -10811,
+    # "not an application"); launching the container registers it.
+    subprocess.run(["open", built[args.keep]], check=True)
+    print(f"relaunched {args.keep}. Quit Safari fully (Cmd-Q) to refresh its list.")
     return 0
 
 
