@@ -153,7 +153,7 @@ how to switch it on.
 
 ## Version information
 
-    Version             1.0.1   <- the form prefills 1.0; it must match
+    Version             1.0.2   <- the form prefills 1.0; it must match
                                 the build or the listing and binary disagree
     Category            Utilities
     Copyright           2026 Immanuel Washington

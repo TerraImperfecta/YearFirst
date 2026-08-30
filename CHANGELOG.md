@@ -6,7 +6,14 @@ versions follow [Semantic Versioning][semver].
 [kac]: https://keepachangelog.com/en/1.1.0/
 [semver]: https://semver.org/spec/v2.0.0.html
 
-## [Unreleased]
+## [1.0.2] — 2026-08-30
+
+### Added
+
+- The settings page lists the sites Year First is switched off on, and turns
+  them back on. Switching a site off has always been a one-way door from the
+  popup: to switch it back on you had to be on that site. Fine for the site
+  in front of you, useless for one switched off months ago.
 
 ### Changed
 
@@ -17,10 +24,20 @@ versions follow [Semantic Versioning][semver].
 
 ### Fixed
 
+- Toggling the extension, or a single site, no longer reloads the page when
+  switching it back **on**. The content script is already there and rewrites
+  in place, so the page no longer flashes and then visibly changes under
+  itself. Switching **off** still reloads, because a rewritten date has lost
+  the text it replaced and there is nothing to put back without a fresh load.
+
 - The per-site off switch was missing from the popup on Safari. Safari does
   not give the popup the tab's URL through `activeTab`, so the popup could
   not tell which site it was looking at and hid the row. It now asks the
   content script, which is already running on the page. No new permission.
+
+  Shipped to the Mac App Store in 1.0.1 already -- that build was packaged
+  after the fix landed, where the Chrome and Firefox uploads were packaged
+  before it. 1.0.2 puts all three back on the same source.
 
 ## [1.0.1] — 2026-08-30
 
