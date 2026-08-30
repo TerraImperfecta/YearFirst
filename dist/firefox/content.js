@@ -193,42 +193,109 @@
     span.style.setProperty("text-decoration-color", "currentColor");
   }
 
-  function rewriteTextNode(node, opts) {
+  // Apply a set of replacements to one text node. Ranges are offsets into the
+  // node's ORIGINAL text, so callers can compute them all up front without
+  // each edit invalidating the next. An empty value deletes the range, which
+  // is how the tail of a date that started in an earlier node is removed.
+  function applyEdits(node, edits, opts) {
     const text = node.nodeValue;
-    if (!text || text.length < 6) return;
-    // Drop matches that would not change the text. Two things depend on this.
-    // A date already written as YYYY-MM-DD gains nothing from a span, an
-    // underline and a tooltip repeating what is on screen. And a <time>
-    // element whose text rewriteTimeElements has just replaced would
-    // otherwise be rewritten again here, nesting a span whose title covers
-    // the element's own title -- so hovering showed the new date instead of
-    // the original text it replaced.
-    const dates = findDates(text, opts).filter((d) => d.value !== d.raw);
-    if (!dates.length) return;
+    edits.sort((a, b) => a.start - b.start);
+
+    const wantsMarkup = (opts.showOriginal || opts.highlight)
+      && edits.some((e) => e.value !== "");
 
     // Plain text swap keeps the DOM shape identical, which matters on
     // framework-rendered pages. Only build elements if asked to.
-    if (!opts.showOriginal && !opts.highlight) {
+    if (!wantsMarkup) {
       let out = "", last = 0;
-      for (const d of dates) { out += text.slice(last, d.start) + d.value; last = d.end; }
+      for (const e of edits) { out += text.slice(last, e.start) + e.value; last = e.end; }
       node.nodeValue = out + text.slice(last);
       return;
     }
 
     const frag = document.createDocumentFragment();
     let last = 0;
-    for (const d of dates) {
-      if (d.start > last) frag.appendChild(document.createTextNode(text.slice(last, d.start)));
-      const span = document.createElement("span");
-      span.className = "year-first-date";
-      span.textContent = d.value;
-      if (opts.showOriginal) span.title = d.raw;
-      if (opts.highlight) styleSpan(span);
-      frag.appendChild(span);
-      last = d.end;
+    for (const e of edits) {
+      if (e.start > last) frag.appendChild(document.createTextNode(text.slice(last, e.start)));
+      if (e.value !== "") {
+        const span = document.createElement("span");
+        span.className = "year-first-date";
+        span.textContent = e.value;
+        if (opts.showOriginal) span.title = e.raw;
+        if (opts.highlight) styleSpan(span);
+        frag.appendChild(span);
+      }
+      last = e.end;
     }
     if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
     node.parentNode.replaceChild(frag, node);
+  }
+
+  // Rewrite one run of text nodes that share a block. They are matched as a
+  // single string so that a date broken across inline markup is still found:
+  // Wikipedia writes "1 January 1970" as 1, then a <span> holding only a
+  // non-breaking space, then January 1970, and no one text node holds a date.
+  //
+  // A match is only joined across a gap when every text node between the
+  // first and the last is whitespace. That covers the case above and refuses
+  // the dangerous one -- a date split across two links -- where rewriting
+  // would have to delete the elements holding it.
+  function rewriteRun(nodes, opts) {
+    if (!nodes.length) return;
+
+    let combined = "";
+    const spans = nodes.map((node) => {
+      const span = { start: combined.length, end: combined.length + node.nodeValue.length, node };
+      combined += node.nodeValue;
+      return span;
+    });
+    if (combined.length < 6) return;
+
+    const dates = findDates(combined, opts).filter((d) => d.value !== d.raw);
+    if (!dates.length) return;
+
+    const edits = new Map();
+    const add = (node, edit) => {
+      const list = edits.get(node);
+      if (list) list.push(edit); else edits.set(node, [edit]);
+    };
+
+    for (const d of dates) {
+      const touched = spans.filter((sp) => sp.start < d.end && sp.end > d.start);
+      if (!touched.length) continue;
+
+      const first = touched[0];
+      if (touched.length === 1) {
+        add(first.node, { start: d.start - first.start, end: d.end - first.start, value: d.value, raw: d.raw });
+        continue;
+      }
+
+      const middle = touched.slice(1, -1);
+      if (middle.some((sp) => /\S/.test(sp.node.nodeValue))) continue;
+
+      // The value goes where the date started; the rest of it is deleted.
+      const last = touched[touched.length - 1];
+      add(first.node, { start: d.start - first.start, end: first.end - first.start, value: d.value, raw: d.raw });
+      for (const sp of middle) add(sp.node, { start: 0, end: sp.node.nodeValue.length, value: "", raw: "" });
+      add(last.node, { start: 0, end: d.end - last.start, value: "", raw: "" });
+    }
+
+    for (const [node, list] of edits) applyEdits(node, list, opts);
+  }
+
+  const BLOCK_TAGS = new Set([
+    "ADDRESS", "ARTICLE", "ASIDE", "BLOCKQUOTE", "BODY", "DD", "DIV", "DL", "DT",
+    "FIELDSET", "FIGCAPTION", "FIGURE", "FOOTER", "FORM", "H1", "H2", "H3", "H4",
+    "H5", "H6", "HEADER", "HR", "LI", "MAIN", "NAV", "OL", "P", "SECTION", "TABLE",
+    "TBODY", "TD", "TFOOT", "TH", "THEAD", "TR", "UL"
+  ]);
+
+  function blockOf(node, root) {
+    for (let e = node.parentElement; e; e = e.parentElement) {
+      if (BLOCK_TAGS.has(e.tagName)) return e;
+      if (e === root) return e;
+    }
+    return document.body || document.documentElement;
   }
 
   function walkText(root, opts) {
@@ -236,23 +303,39 @@
     if (!start) return;
 
     if (root.nodeType === 3) {
-      if (!isSkipped(start)) rewriteTextNode(root, opts);
+      if (!isSkipped(start)) rewriteRun([root], opts);
       return;
     }
     if (isSkipped(start)) return;
 
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-      acceptNode(n) {
-        if (!n.nodeValue || n.nodeValue.length < 6) return NodeFilter.FILTER_REJECT;
-        const p = n.parentElement;
-        if (!p || isSkipped(p)) return NodeFilter.FILTER_REJECT;
-        return NodeFilter.FILTER_ACCEPT;
-      }
-    });
+    // Elements are visited too, so a <br> can end a run: a date either side of
+    // a line break is two dates as far as the reader is concerned.
+    const walker = document.createTreeWalker(
+      root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+        acceptNode(n) {
+          if (n.nodeType === 1) {
+            return n.tagName === "BR" ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+          }
+          if (!n.nodeValue) return NodeFilter.FILTER_REJECT;
+          const p = n.parentElement;
+          if (!p || isSkipped(p)) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      });
 
-    const nodes = [];
-    for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n);
-    for (const n of nodes) rewriteTextNode(n, opts);
+    const runs = [];
+    let current = null, currentBlock = null;
+    const flush = () => { if (current && current.length) runs.push(current); current = null; currentBlock = null; };
+
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (n.nodeType === 1) { flush(); continue; }
+      const block = blockOf(n, root);
+      if (block !== currentBlock) { flush(); currentBlock = block; current = []; }
+      current.push(n);
+    }
+    flush();
+
+    for (const run of runs) rewriteRun(run, opts);
   }
 
   /* ---- <time datetime="..."> is the most reliable source there is ---- */

@@ -107,6 +107,21 @@ framework-managed DOM can break re-rendering on some sites. Both appearance
 options default to on; if a site misbehaves the fix is turning them off, not
 removing the plain path.
 
+**A date is only joined across a gap that is entirely whitespace.**
+`rewriteRun` matches a run of text nodes as one string, so a date broken
+across inline markup is still found -- Wikipedia writes "1 January 1970" as
+`1`, a `<span>` holding only a non-breaking space, then `January 1970`. But it
+refuses to join when any text node between the first and last holds real
+content, because rewriting there would mean deleting the elements that hold
+the date. A date split across two links is the case that would break.
+
+This was measured before it was built rather than guessed: on the Unix time
+article, 66 unreachable dates were all whitespace gaps and **zero** needed
+crossing an element with content. The narrow rule recovers everything at no
+risk. Runs also end at a `<br>` and at any block boundary, both of which have
+tests -- and the block test needs its trailing space to mean anything, since
+without it the concatenation cannot match either way.
+
 **Matches that would not change the text are dropped before rewriting.**
 `rewriteTextNode` filters `d.value !== d.raw`. This looks like an
 optimisation and is not. Without it, `rewriteTimeElements` sets a `<time>`
