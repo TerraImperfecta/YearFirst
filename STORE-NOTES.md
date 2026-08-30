@@ -153,7 +153,8 @@ how to switch it on.
 
 ## Version information
 
-    Version             1.0.1
+    Version             1.0.1   <- the form prefills 1.0; it must match
+                                the build or the listing and binary disagree
     Category            Utilities
     Copyright           2026 Immanuel Washington
     Minimum macOS       13.3   (set by the build, not typed here)
@@ -164,6 +165,14 @@ how to switch it on.
 
 Support URL is required and there is no way round it. The repository is
 public, so it serves.
+
+## Promotional text
+
+App Store only, 170 characters, and the one field that can be changed later
+without submitting a new build. It appears above the description.
+
+    Every date on the page, in one format. Even 05/01, read the way your
+    page means it.
 
 ## Keywords
 
