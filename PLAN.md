@@ -258,6 +258,24 @@ behaves. The popup already has `activeTab`, so the origin is available from
 `tabs.query` without new permissions. Keep the storage key separate from the
 global `enabled` flag so the two don't fight.
 
+### 3b. Announce the original date to screen readers — issue #29
+
+Rewriting dates is neutral-to-negative for anyone listening rather than
+reading. VoiceOver reads "January 5, 2024" naturally and "2024-01-05" as a run
+of digits and dashes, and when the tooltip option is on some screen readers
+announce both the content and the `title`, so the date is heard twice in two
+formats.
+
+The fix is roughly three lines -- `aria-label` on the span carrying the text
+it replaced -- but the questions around it are not obvious: whether to set it
+when `showOriginal` is off, whether `aria-label` suppresses the double
+announcement or adds a third, and how `<time>` elements differ since they are
+not wrapped. Those need a real screen reader, not reasoning. See the issue.
+
+Deliberately not in 1.0.1: raised while filling in the App Store
+accessibility declarations, with the release already mid-review across three
+stores.
+
 ### 4. Safari — DONE (built and run; not yet distributed)
 
 Licensing is settled: this target ships MPL-2.0, handled by `build.py`. No
