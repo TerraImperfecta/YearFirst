@@ -34,6 +34,16 @@ LICENSES = {
 }
 DEFAULT_SPDX = "GPL-3.0-or-later"
 
+# Keys to delete per target, as paths into the manifest. TARGETS can only add
+# or replace; this is how a target drops something the base declares.
+#
+# Safari does not support options_ui.open_in_tab and warns about it at
+# conversion time. It is false here, which is Safari's only behaviour anyway,
+# so dropping the key changes nothing except the warning.
+REMOVE = {
+    "safari": [("options_ui", "open_in_tab")],
+}
+
 TARGETS = {
     # Firefox runs the background script as an event page and needs an
     # explicit add-on ID for storage.sync.
@@ -61,6 +71,15 @@ TARGETS = {
 def build(target: str, make_zip: bool) -> Path:
     manifest = json.loads(BASE.read_text())
     manifest.update(TARGETS[target])
+
+    for path in REMOVE.get(target, []):
+        node = manifest
+        for key in path[:-1]:
+            node = node.get(key)
+            if node is None:
+                break
+        else:
+            node.pop(path[-1], None)
 
     out = DIST / target
     if out.exists():

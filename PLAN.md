@@ -199,12 +199,52 @@ behaves. The popup already has `activeTab`, so the origin is available from
 `tabs.query` without new permissions. Keep the storage key separate from the
 global `enabled` flag so the two don't fight.
 
-### 4. Safari
+### 4. Safari — CONVERTED, NOT YET RUN
 
 Licensing is settled: this target ships MPL-2.0, handled by `build.py`. No
 action needed beyond not undoing it.
 
-`xcrun safari-web-extension-converter dist/safari` on macOS with Xcode.
+The conversion runs clean. The exact invocation, which is worth reusing:
+
+```
+xcrun safari-web-extension-converter dist/safari \
+  --macos-only \
+  --project-location ~/Developer/YearFirst-Safari \
+  --app-name "Year First" \
+  --bundle-identifier dev.immanuelqrw.year-first \
+  --swift --no-open --no-prompt
+```
+
+`--copy-resources` is deliberately omitted, so the project REFERENCES
+`dist/safari/` rather than copying it — `python3 build.py safari` then updates
+what the app loads, without regenerating the project. Add `--copy-resources`
+for a release build, so the project stands alone.
+
+Generated outside the repo on purpose. An Xcode project is a large pile of
+files that should not be committed, and there is no .gitignore to catch it.
+
+Converting emitted one warning, now fixed at the source rather than ignored:
+Safari does not support `options_ui.open_in_tab`, so `build.py` drops that key
+for the safari target only. It was `false`, which is Safari's only behaviour
+anyway, so nothing changed but the warning.
+
+Still to do, and it needs a human at the keyboard:
+
+- Open the project in Xcode and build and run it (⌘R).
+- Safari → Settings → Advanced → show developer features, then
+  Develop → Allow Unsigned Extensions. That resets on every Safari restart.
+- Enable the extension in Safari → Settings → Extensions, and run the same
+  checks the Chrome build passed, against `test/test.html` served over http.
+- Two things to confirm rather than assume: whether `action.setBadgeText`
+  does anything (it is already wrapped in try/catch, so worst case is a
+  missing badge and the popup still shows true state), and whether the
+  options page behaves, since Safari surfaces it through the app rather than
+  as an embedded page.
+
+Distribution is a separate job: Apple Developer Program at $99/year, code
+signing, and an App Store Connect record. Note that is an APP listing, not an
+extension listing — it needs its own screenshots and description, distinct
+from the copy in STORE-NOTES.md.
 Needs Safari → Settings → Advanced → show developer features, then
 Develop → Allow Unsigned Extensions, which resets on every Safari restart.
 Two things to check rather than assume: whether `action.setBadgeText` does
