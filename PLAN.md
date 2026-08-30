@@ -309,13 +309,25 @@ own 10.14 and is left alone.
 conversion, which the archive build warns about and which the Mac App Store
 requires. Set to `public.app-category.utilities`.
 
-**The network entitlement is removed on purpose.** The converter sets
-`ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES` on the app target, which grants
-`com.apple.security.network.client`. This extension makes no network requests
--- that is the central privacy claim, stated in the listing, the privacy
-policy and the store declarations -- so an entitlement advertising network
-access contradicts it. Both app configurations are set to NO. The extension
-target never had it.
+**The network entitlement must stay, and looks removable.** The converter
+sets `ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES` on the app target, granting
+`com.apple.security.network.client`. It is tempting to remove: the extension
+makes no network requests, and the listing, the privacy policy and both store
+declarations all say so.
+
+Removing it breaks the app. The wrapper hosts a `WKWebView`, and a sandboxed
+app embedding one needs this entitlement for WebKit's own content process --
+even when the page is a local `file://` from the bundle. Without it the app
+launches, the window opens, and the web view renders **nothing**. No crash, no
+error in the build, no sandbox denial in the log. Just a blank window.
+
+The entitlement describes what WebKit needs, not what this code does. It says
+nothing about the extension, which still makes no network requests of any
+kind. `tools/fix-safari-project.py` puts it back if it is ever removed again.
+
+This was removed once, on the reasoning above, and shipped a blank window that
+built and launched cleanly. Verified only when someone looked at the running
+app -- which is the lesson: "it builds" and "it launches" are not "it works".
 
 **The Xcode project carries its own version and does not follow the
 manifest.** The project references `dist/safari/`, so the extension content
