@@ -10,9 +10,10 @@ versions follow [Semantic Versioning][semver].
 
 Nothing yet.
 
-## [1.0.0] — unreleased
+## [1.0.0] — 2026-08-30
 
-First release. Not yet submitted to any store.
+First release. Tagged and built for all three browsers; not yet submitted to
+any store.
 
 ### Added
 
