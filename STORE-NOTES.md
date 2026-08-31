@@ -334,6 +334,137 @@ see.
 Small promo tile for Chrome is 440x280: the icon on the tile amber (#B8730E)
 with the wordmark, or a single before/after pair large enough to read.
 
+## App Review Information — Notes
+
+1.0.1 was rejected under **2.1.0 Performance: App Completeness**. Nothing was
+found wrong with it: the reviewer asked for information, because a Safari
+extension's container app shows one line of text and a button, and nothing in
+the submission said what the extension itself does. Paste the answers below
+into the Notes field of App Review Information. Apple asks that they be
+included in every future submission, so this section is written to be reused.
+
+### 1. Screen recording
+
+Recorded on the Mac in section 2, not a simulator. Apple asks that it begin
+with launching the app. For an extension that means the app window is the
+first thing on screen and the least interesting -- go through it, do not
+start in Safari.
+
+    1.  Launch Year First from Applications. The window says the extension
+        can be turned on in Safari Extensions preferences.
+    2.  Click "Quit and Open Safari Extensions Preferences…".
+    3.  Tick Year First in the list. Allow it on every website when asked.
+    4.  Open a page with dates written several ways -- a Wikipedia article
+        works. Show the dates rewritten to YYYY-MM-DD in place.
+    5.  Hover a rewritten date to show the tooltip with the original text.
+    6.  Open the toolbar popup. Show the master switch, and the per-site
+        switch naming the host.
+    7.  Switch the site off. The page reloads with its original dates back.
+    8.  Switch it back on. The dates return without the page reloading.
+    9.  Open Settings from the popup. Show the date-order options, the
+        appearance options, and the list of sites switched off.
+    10. Turn the site back on from that list.
+
+None of the flows Apple lists apply: no account, no purchase, no
+user-generated content, and no prompt for location, contacts, camera or
+tracking. Say so in the reply rather than leaving it to be inferred.
+
+### 2. Devices and operating systems tested
+
+    MacBook Pro (Mac17,9), Apple M5 Pro
+    macOS 26.6.2 (25G83), Safari 26.6.2
+
+The deployment target is macOS 13.3. That is the floor rather than a tested
+configuration: the extension is Manifest V3 and uses a background service
+worker, which Safari first supported in 16.4, and Safari 16.4 shipped with
+macOS 13.3.
+
+### 3. What it does, and for whom
+
+Year First rewrites dates on the pages you visit into ISO 8601 — YYYY-MM-DD.
+
+The problem it solves is that all-numeric dates are ambiguous. `05/01/2024`
+is 5 January to most of the world and May 1 in the United States, and nothing
+on the page says which. Even unambiguous dates are written a dozen ways, so
+scanning a page for one, or comparing dates between two sites, means reading
+each one carefully. One sortable format everywhere removes that.
+
+It is for anyone who reads across international sites: developers reading
+issue trackers and changelogs, researchers and archivists working with
+sources from several countries, and anyone who has misread a date by a month.
+
+### 4. Setting up and using it
+
+No account, no login, no in-app purchase, no sample files. There is nothing
+to provide credentials for.
+
+The container app exists because a Safari extension has to ship inside one.
+It has a single button, which opens Safari's Extensions preferences. Enable
+the extension there and allow it on websites; everything after that happens
+in Safari.
+
+    Rewriting          automatic on every page once enabled
+    Toolbar popup      master switch, a switch for the current site,
+                       underline and tooltip options
+    Settings           how to read ambiguous numeric dates, what to rewrite,
+                       appearance, and the list of sites switched off
+
+### 5. External services, tools and platforms
+
+None. The extension makes no network requests of any kind, and the app makes
+none either.
+
+There is no analytics, no telemetry, no third-party SDK, no AI service, no
+payment processor and no authentication provider. Nothing is fetched at
+runtime and no code is loaded from anywhere: the source contains no `fetch`,
+`XMLHttpRequest` or `WebSocket`, no `eval` or `new Function`, and no
+dynamically inserted script. Everything shipped is thirteen original files —
+four scripts, two pages, a manifest, five icons and the licence.
+
+One thing that looks like an exception and is not. The app carries
+`com.apple.security.network.client`. WKWebView requires it inside the App
+Sandbox even to render a local page bundled in the app, and the app's window
+is exactly that. Removing it does not remove a network capability that is
+being used; it ships a blank window. We tried, and it did.
+
+### 6. Regional differences
+
+The features are identical in every region, and the output format is always
+YYYY-MM-DD.
+
+One behaviour does vary, and it is the point of the extension rather than a
+regional restriction: how an ambiguous all-numeric date is read. The default,
+"Work it out per page", looks for dates on the same page that can only be
+read one way and follows them; failing that it follows the page's language.
+The setting can be forced to day-first or month-first instead. Month names
+are recognised in English only.
+
+No content is region-locked, nothing is withheld by region, and there is no
+geographic restriction of any kind.
+
+### 7. Regulated industry, protected material
+
+Neither applies. The extension does not operate in a regulated industry and
+carries no third-party or protected material.
+
+All code is original and written by the developer, who holds the copyright.
+No third-party libraries are bundled -- the file list in section 5 is the
+whole of it. The Safari build is distributed under MPL-2.0; the same source
+is GPL-3.0-or-later elsewhere, and the developer, as sole copyright holder,
+may license it both ways.
+
+### Which build to send
+
+Send 1.0.2, not 1.0.1. It is archived, signed and ready, and the recording
+has to match what the reviewer installs -- 1.0.1 has no list of switched-off
+sites on the settings page, which is step 9 of the recording above.
+
+Worth knowing but not worth changing mid-review: the app also carries
+`com.apple.security.files.user-selected.read-only`, a converter default it
+never exercises. Removing an entitlement is what broke the app window once
+already, so leave it until 1.0.2 is through and verify the window still
+renders afterwards.
+
 ## Before submitting
 
 - [ ] Screenshots taken and cropped to size
