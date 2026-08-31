@@ -629,6 +629,21 @@ reliably if the iOS target is built — `--macos-only` avoids that for now.
 
 ### 5. Release prep
 
+**1.0.1 was rejected by Apple under 2.1.0, App Completeness.** Not a defect:
+the reviewer asked for information. A Safari extension's container app is one
+line of text and a button, so nothing in the submission said what the
+extension did, and a reviewer cannot find out by launching it.
+
+The reply is drafted in `STORE-NOTES.md` under "App Review Information --
+Notes", answering all seven of Apple's questions, with a shot list for the
+screen recording they ask for. Apple asks that the same information be
+included in every future submission, so it is written to be reused rather
+than as a one-off reply.
+
+Send 1.0.2 rather than replying with 1.0.1 in place. The recording has to
+match what the reviewer installs, and 1.0.1's settings page has no list of
+switched-off sites.
+
 - ~~Replace the placeholder add-on ID.~~ DONE — now
   `year-first@immanuelqrw.dev`. It was worth doing first: the ID keys
   `storage.sync`, so changing it after release silently resets everyone's
