@@ -697,11 +697,22 @@ than reconstructed afterwards. All three packages were built from commit
 | --- | --- | --- | --- |
 | Chrome | 2026-09-18 | `year-first-chrome.zip` | `aa4f6178f63a8f3e` |
 | Firefox / AMO | 2026-09-18 | `year-first-firefox.zip` | `e7f1b1dc98c8aa65` |
-| Mac App Store | -- | `year-first-safari.zip` | `fa6435bfba8b2948` |
+| Mac App Store | 2026-09-18 | `Year First 1.0.2 (2).xcarchive` | `fa6435bfba8b2948` |
 
-The 2.1 reply went to Apple on 2026-09-18 with the notes and the recording.
-Whether that submission was moved onto the 1.0.2 build or left on 1.0.1 is
-not recorded here -- check before assuming, the way 1.0.1 had to be.
+Apple's row names the archive, not `year-first-safari.zip`: that zip is the
+converter's input and is never uploaded anywhere. The hash is the same one
+because the archive bundles the same extension, checked rather than assumed
+-- the .appex's Resources and the zip's fourteen files hash identically. That
+is what ties Apple's submission to the same source as the other two.
+
+The 2.1 reply went in the same day, with the notes and the recording, on the
+1.0.2 build.
+
+This table records what was SUBMITTED, deliberately. Approval status belongs
+in the tracker, not here: it changes without anyone editing this file, and a
+stale "approved" is worse than no answer. The provenance -- which build each
+store received -- is the thing that was expensive to reconstruct for 1.0.1
+and the thing this table exists to make cheap.
 
 Hash the zip's CONTENTS, not the zip. Zip entries carry mtimes, so the file
 hash changes on every rebuild even when nothing in it did:
