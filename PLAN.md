@@ -689,6 +689,60 @@ Compare with the SPDX line normalised away, or everything looks different:
 `build.py` retags the identifier per target, so the Safari copy differs from
 `src/` on that line in every file.
 
+**What each store got for 1.0.2.** Recorded at submission this time rather
+than reconstructed afterwards. All three packages were built from commit
+`78ca0ee`, so unlike 1.0.1 the three stores are on identical source.
+
+| Store | Submitted | Package | Contents SHA-256 |
+| --- | --- | --- | --- |
+| Chrome | 2026-09-18 | `year-first-chrome.zip` | `aa4f6178f63a8f3e` |
+| Firefox / AMO | 2026-09-18 | `year-first-firefox.zip` | `e7f1b1dc98c8aa65` |
+| Mac App Store | -- | `year-first-safari.zip` | `fa6435bfba8b2948` |
+
+The 2.1 reply went to Apple on 2026-09-18 with the notes and the recording.
+Whether that submission was moved onto the 1.0.2 build or left on 1.0.1 is
+not recorded here -- check before assuming, the way 1.0.1 had to be.
+
+Hash the zip's CONTENTS, not the zip. Zip entries carry mtimes, so the file
+hash changes on every rebuild even when nothing in it did:
+
+```
+python3 - <<'EOF'
+import hashlib, zipfile, glob, os
+for f in sorted(glob.glob("dist/year-first-*.zip")):
+    z = zipfile.ZipFile(f); h = hashlib.sha256()
+    for n in sorted(x for x in z.namelist() if not x.endswith("/")):
+        h.update(n.encode()); h.update(z.read(n))
+    print(f"{os.path.basename(f):28} {h.hexdigest()[:16]}")
+EOF
+```
+
+**AMO requires a source upload; the Chrome Web Store does not.** AMO asks
+whether the extension uses "any other tool that takes code or files, applies
+processing, and generates code or file(s) to include in the extension".
+`build.py` does: it generates `manifest.json` from `manifest.base.json`. The
+honest answer is yes even though nothing is minified, bundled or transpiled,
+and the asymmetry is the reason -- answering yes costs a source upload,
+answering no and being caught is a misrepresentation on a compliance
+question.
+
+Every `.js` and `.html` file in the package is byte-identical to `src/`;
+`manifest.json` and `LICENSE` are the only generated or added files. Say so
+in the reviewer notes, since it is the thing the reviewer is checking for.
+
+Build the source archive from the tracked tree, which excludes
+`node_modules` and untracked junk without having to enumerate exclusions:
+
+```
+git archive --format=zip --prefix=YearFirst-<version>/ -o <out>.zip HEAD
+```
+
+Then prove it reproduces the package before uploading -- extract it to an
+empty directory, run `python3 build.py firefox`, and compare SHA-256 per
+file against the package. 1.0.2 matched on all 14. Reviewer notes claiming
+reproducibility are worth checking rather than asserting, and the check
+takes a minute.
+
 None of the three has #31 (`aria-label` for screen readers), #35 (the
 disabled-hosts list on the options page), or #36 (applying a toggle without
 reloading). Those are the contents of 1.0.2, and it would put all three
